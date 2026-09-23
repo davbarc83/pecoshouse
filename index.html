@@ -22,8 +22,35 @@ html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);
   font-family:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.45}
 .app{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
-aside{background:var(--panel);border-right:1px solid var(--border);padding:20px 18px;display:flex;flex-direction:column;gap:22px;
+aside{background:var(--panel);border-right:1px solid var(--border);padding:20px 18px;display:flex;flex-direction:column;gap:0;
   position:sticky;top:0;max-height:100vh;overflow-y:auto}
+.head{padding-bottom:14px;border-bottom:1px solid var(--border)}
+.slotsec{padding:14px 0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.slotlbl{font-weight:600;font-size:.95rem}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.slot{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 8px;min-width:0;text-align:left}
+.slot .sname{font-weight:600;font-size:.85rem;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot .smeta{font-size:.7rem;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot.sel{border-color:var(--door);box-shadow:inset 0 0 0 1px var(--door)}
+details.sec{border-bottom:1px solid var(--border)}
+details.sec > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:13px 2px;font-weight:600;font-size:.95rem;user-select:none}
+details.sec > summary::-webkit-details-marker{display:none}
+details.sec > summary::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s ease;margin-top:-4px}
+details.sec[open] > summary::after{transform:rotate(-135deg);margin-top:4px}
+details.sec > summary:hover{color:var(--hover)}
+details.sec .body{display:flex;flex-direction:column;gap:8px;padding:0 0 16px}
+.badge{font-size:.72rem;font-weight:600;background:var(--border);color:var(--ink);border-radius:10px;padding:1px 7px}
+.actions{padding-top:16px}
+.vbox{display:flex;flex-direction:column;gap:8px}
+input[type=text]{width:100%;font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--border);border-radius:6px;padding:7px 8px}
+.vlist{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.vlist li{background:var(--sheet);border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.vlist li.cur{border-color:var(--door);box-shadow:inset 3px 0 0 var(--door)}
+.vlist .vname{font-weight:600;font-size:.9rem;word-break:break-word}
+.vlist .vmeta{font-size:.78rem;color:var(--muted)}
+.vlist .vact{display:flex;gap:6px;flex-wrap:wrap}
+.vlist .vact button{padding:4px 9px;font-size:.8rem}
+.vlist .empty{color:var(--muted);font-size:.85rem;background:none;border:0;padding:0}
 h1{font-size:1.35rem;font-weight:700;margin:0;letter-spacing:-0.01em}
 .hint{color:var(--muted);font-size:.88rem;margin:6px 0 0}
 fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
@@ -94,61 +121,95 @@ main{overflow:auto;padding:24px;display:flex}
 <body>
 <div class="app">
   <aside>
-    <div>
+    <div class="head">
       <h1>Plano en grilla</h1>
-      <p class="hint">Haz clic cerca de un borde para colocar o quitar la pieza elegida; mantén presionado y arrastra para trazar varias seguidas. Los muebles se colocan con clic dentro de un cuadro.</p>
+      <p class="hint">Clic cerca de un borde para colocar o quitar paredes; clic dentro de un cuadro para muebles. Arrastra para trazar varias piezas seguidas.</p>
     </div>
 
-    <fieldset>
-      <legend>Tamaño de la grilla</legend>
-      <div class="row">
-        <label class="field">Filas<input id="rows" type="number" min="1" max="80" value="12"></label>
-        <label class="field">Columnas<input id="cols" type="number" min="1" max="80" value="12"></label>
+    <div class="slotsec">
+      <div class="slotlbl">Espacio de trabajo</div>
+      <div class="slots" id="slots" role="group" aria-label="Espacios de trabajo"></div>
+      <label class="field">Nombre de este plano<input id="slotName" type="text" maxlength="40"></label>
+    </div>
+
+    <details class="sec" data-sec="paredes" open>
+      <summary>Paredes y aberturas</summary>
+      <div class="body">
+        <div class="tools" role="radiogroup">
+          <input type="radio" name="tool" id="t1" value="1" checked>
+          <label for="t1"><svg width="18" height="18" viewBox="0 0 18 18"><line x1="2" y1="9" x2="16" y2="9" stroke="currentColor" stroke-width="4"/></svg>Pared<span class="key">1</span></label>
+          <input type="radio" name="tool" id="t2" value="2">
+          <label for="t2"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M3 3 L3 15 M15 3 A12 12 0 0 1 3 15" fill="none" stroke="var(--door)" stroke-width="1.6"/></svg>Puerta<span class="key">2</span></label>
+          <input type="radio" name="tool" id="t3" value="3">
+          <label for="t3"><svg width="18" height="18" viewBox="0 0 18 18"><rect x="2" y="7" width="14" height="4" fill="none" stroke="var(--window)" stroke-width="1.4"/><line x1="2" y1="9" x2="16" y2="9" stroke="var(--window)" stroke-width="1"/></svg>Ventana<span class="key">3</span></label>
+          <input type="radio" name="tool" id="t0" value="0">
+          <label for="t0"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M4 4 L14 14 M14 4 L4 14" stroke="currentColor" stroke-width="1.8"/></svg>Borrar<span class="key">4</span></label>
+        </div>
+        <p class="hint" style="margin:0">«Borrar» quita paredes cerca de un borde y muebles en el centro del cuadro.</p>
       </div>
-      <button id="apply" class="primary">Aplicar tamaño</button>
-    </fieldset>
+    </details>
 
-    <fieldset>
-      <legend>Paredes y aberturas</legend>
-      <div class="tools" role="radiogroup">
-        <input type="radio" name="tool" id="t1" value="1" checked>
-        <label for="t1"><svg width="18" height="18" viewBox="0 0 18 18"><line x1="2" y1="9" x2="16" y2="9" stroke="currentColor" stroke-width="4"/></svg>Pared<span class="key">1</span></label>
-        <input type="radio" name="tool" id="t2" value="2">
-        <label for="t2"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M3 3 L3 15 M15 3 A12 12 0 0 1 3 15" fill="none" stroke="var(--door)" stroke-width="1.6"/></svg>Puerta<span class="key">2</span></label>
-        <input type="radio" name="tool" id="t3" value="3">
-        <label for="t3"><svg width="18" height="18" viewBox="0 0 18 18"><rect x="2" y="7" width="14" height="4" fill="none" stroke="var(--window)" stroke-width="1.4"/><line x1="2" y1="9" x2="16" y2="9" stroke="var(--window)" stroke-width="1"/></svg>Ventana<span class="key">3</span></label>
-        <input type="radio" name="tool" id="t0" value="0">
-        <label for="t0"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M4 4 L14 14 M14 4 L4 14" stroke="currentColor" stroke-width="1.8"/></svg>Borrar<span class="key">4</span></label>
+    <details class="sec" data-sec="muebles" open>
+      <summary>Muebles</summary>
+      <div class="body">
+        <div class="palette" id="palette"></div>
+        <div class="rotrow"><button id="rotate" title="Tecla R">Girar 90°</button><span id="rotLabel">Orientación: 0°</span></div>
       </div>
-      <p class="hint" style="margin:0">«Borrar» quita paredes cerca de un borde y muebles en el centro del cuadro.</p>
-    </fieldset>
+    </details>
 
-    <fieldset>
-      <legend>Muebles</legend>
-      <div class="palette" id="palette"></div>
-      <div class="rotrow"><button id="rotate" title="Tecla R">Girar 90°</button><span id="rotLabel">Orientación: 0°</span></div>
-    </fieldset>
+    <details class="sec" data-sec="grilla">
+      <summary>Tamaño de la grilla</summary>
+      <div class="body">
+        <div class="row">
+          <label class="field">Filas<input id="rows" type="number" min="1" max="80" value="12"></label>
+          <label class="field">Columnas<input id="cols" type="number" min="1" max="80" value="12"></label>
+        </div>
+        <button id="apply" class="primary">Aplicar tamaño</button>
+      </div>
+    </details>
 
-    <fieldset>
-      <legend>Vista y escala</legend>
-      <label class="field">Tamaño de cada cuadro en pantalla<input id="zoom" type="range" min="20" max="90" value="44"></label>
-      <label class="field">Metros por cuadro<input id="meters" type="number" min="0.1" step="0.1" value="1"></label>
-      <label class="check"><input id="dims" type="checkbox" checked>Mostrar medidas de las paredes</label>
-      <label class="check"><input id="rooms" type="checkbox" checked>Mostrar medidas de los ambientes</label>
-      <div class="stats" id="stats"></div>
-    </fieldset>
+    <details class="sec" data-sec="vista">
+      <summary>Vista y escala</summary>
+      <div class="body">
+        <label class="field">Tamaño de cada cuadro en pantalla<input id="zoom" type="range" min="20" max="90" value="44"></label>
+        <label class="field">Metros por cuadro<input id="meters" type="number" min="0.1" step="0.1" value="1"></label>
+        <label class="check"><input id="dims" type="checkbox" checked>Mostrar medidas de las paredes</label>
+        <label class="check"><input id="rooms" type="checkbox" checked>Mostrar medidas de los ambientes</label>
+        <div class="stats" id="stats"></div>
+      </div>
+    </details>
 
-    <fieldset>
-      <legend>Compartir</legend>
-      <button id="copy" class="primary">Copiar plano al portapapeles</button>
-      <textarea id="code" rows="3" placeholder="Pega aquí el código de un plano y presiona «Cargar código»" spellcheck="false"></textarea>
-      <button id="loadCode">Cargar código</button>
-      <p class="msg" id="shareMsg" role="status"></p>
-    </fieldset>
+    <details class="sec" data-sec="versiones">
+      <summary>Versiones guardadas <span class="badge" id="verCount" hidden></span></summary>
+      <div class="body">
+        <div id="verBox" class="vbox">
+          <label class="field">Nombre de la versión<input id="verName" type="text" maxlength="60" placeholder="Opcional"></label>
+          <button id="verSave" class="primary">Guardar versión actual</button>
+          <p class="msg" id="verMsg" role="status"></p>
+          <ul class="vlist" id="verList"></ul>
+          <div class="actions" style="padding-top:4px">
+            <button id="verExport">Exportar respaldo</button>
+            <button id="verImport">Importar respaldo</button>
+          </div>
+          <input type="file" id="verFile" accept=".json,application/json" hidden>
+          <p class="hint" style="margin:0">Las versiones se guardan en este navegador. Exporta un respaldo para llevarlas a otro equipo o para no perderlas si borras los datos de navegación.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="sec" data-sec="compartir">
+      <summary>Compartir por código</summary>
+      <div class="body">
+        <button id="copy" class="primary">Copiar plano al portapapeles</button>
+        <textarea id="code" rows="3" placeholder="Pega aquí el código de un plano y presiona «Cargar código»" spellcheck="false"></textarea>
+        <button id="loadCode">Cargar código</button>
+        <p class="msg" id="shareMsg" role="status"></p>
+      </div>
+    </details>
 
     <div class="actions">
       <button id="undo" title="Ctrl+Z">Deshacer</button>
-      <button id="clear" class="danger">Limpiar todo</button>
+      <button id="clear" class="danger">Vaciar este plano</button>
     </div>
   </aside>
 
@@ -199,7 +260,8 @@ main{overflow:auto;padding:24px;display:flex}
   let rot = 0;
   let hover = null;
   let drag = null;
-  const undoStack = [];
+  const undoStacks = { 1:[], 2:[], 3:[] };
+  let undoStack = undoStacks[1];
 
   function makeGrid(r, c, oh, ov, of){
     const h = [], v = [], f = [];
@@ -215,24 +277,106 @@ main{overflow:auto;padding:24px;display:flex}
     return { h, v, f };
   }
 
-  function load(){
+  // ---- Espacios de trabajo: 3 planos independientes en localStorage ----
+  const SLOT_KEY = n => 'plano-grilla-slot-' + n;
+  const ACTIVE_KEY = 'plano-grilla-activo';
+  let slot = 1;
+
+  function defaults(n){
+    return { rows:12, cols:12, cell:44, meters:1, showDims:true, showRooms:true,
+             h:[], v:[], f:[], names:{}, nombre:'Plano ' + n, editado:0 };
+  }
+  function readSlot(n){
     try {
-      const raw = localStorage.getItem(KEY);
+      const raw = localStorage.getItem(SLOT_KEY(n));
       if (raw){
         const d = JSON.parse(raw);
-        if (d && d.rows && d.cols && d.h && d.v){
-          Object.assign(st, d);
-          if (!Array.isArray(st.f) || st.f.length !== st.rows) st.f = makeGrid(st.rows, st.cols).f;
-          if (!st.names || typeof st.names !== 'object') st.names = {};
-          return;
-        }
+        if (d && d.rows && d.cols && d.h && d.v) return d;
       }
-    } catch(e){}
-    Object.assign(st, makeGrid(st.rows, st.cols));
+    } catch(_){}
+    return null;
+  }
+  function loadSlot(n, keepZoom){
+    const zoom = st.cell;
+    const d = readSlot(n);
+    st = Object.assign(defaults(n), d || {});
+    if (!d) Object.assign(st, makeGrid(st.rows, st.cols));
+    if (!Array.isArray(st.f) || st.f.length !== st.rows) st.f = makeGrid(st.rows, st.cols).f;
+    if (!st.names || typeof st.names !== 'object') st.names = {};
+    if (keepZoom) st.cell = zoom;
+  }
+  function load(){
+    try {
+      // Migración: el plano guardado por versiones anteriores pasa al espacio 1
+      const old = localStorage.getItem(KEY);
+      if (old){
+        if (!localStorage.getItem(SLOT_KEY(1))) localStorage.setItem(SLOT_KEY(1), old);
+        localStorage.removeItem(KEY);
+      }
+      const a = parseInt(localStorage.getItem(ACTIVE_KEY), 10);
+      if (a >= 1 && a <= 3) slot = a;
+    } catch(_){}
+    undoStack = undoStacks[slot];
+    loadSlot(slot, false);
   }
   function save(){
-    try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e){}
+    st.editado = Date.now();
+    try { localStorage.setItem(SLOT_KEY(slot), JSON.stringify(st)); } catch(e){}
+    renderSlots();
   }
+
+  function switchSlot(n){
+    if (n === slot) return;
+    if (editing) finishNameEdit(true);
+    slot = n;
+    undoStack = undoStacks[n];
+    loadSlot(n, true);
+    try { localStorage.setItem(ACTIVE_KEY, String(n)); } catch(_){}
+    hover = null;
+    currentVer = null;
+    syncInputs();
+    render();
+    renderSlots();
+    renderVersions();
+  }
+
+  function slotSummary(d){
+    if (!d) return 'Vacío';
+    const has = a => Array.isArray(a) && a.some(r => Array.isArray(r) && r.some(x => x));
+    if (!has(d.h) && !has(d.v) && !has(d.f)) return 'Vacío';
+    let txt = `${d.rows}×${d.cols}`;
+    if (d.editado){
+      const t = new Date(d.editado);
+      const pad = x => String(x).padStart(2, '0');
+      txt += ` · ${pad(t.getDate())}/${pad(t.getMonth() + 1)} ${pad(t.getHours())}:${pad(t.getMinutes())}`;
+    }
+    return txt;
+  }
+  function renderSlots(){
+    const box = $('slots');
+    if (!box) return;
+    box.textContent = '';
+    for (let n = 1; n <= 3; n++){
+      const d = n === slot ? st : readSlot(n);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'slot' + (n === slot ? ' sel' : '');
+      b.setAttribute('aria-pressed', String(n === slot));
+      const nm = document.createElement('span');
+      nm.className = 'sname';
+      nm.textContent = (d && d.nombre) || ('Plano ' + n);
+      const mt = document.createElement('span');
+      mt.className = 'smeta';
+      mt.textContent = slotSummary(d);
+      b.title = nm.textContent;
+      b.append(nm, mt);
+      b.addEventListener('click', () => switchSlot(n));
+      box.appendChild(b);
+    }
+    const inp = $('slotName');
+    if (document.activeElement !== inp) inp.value = st.nombre || ('Plano ' + slot);
+  }
+
   function snapshot(){
     undoStack.push(JSON.stringify({ rows:st.rows, cols:st.cols, meters:st.meters, h:st.h, v:st.v, f:st.f, names:st.names }));
     if (undoStack.length > 150) undoStack.shift();
@@ -696,16 +840,23 @@ main{overflow:auto;padding:24px;display:flex}
   $('rooms').addEventListener('change', e => { st.showRooms = e.target.checked; render(); save(); });
   $('undo').addEventListener('click', undo);
 
+  $('slotName').addEventListener('input', e => {
+    st.nombre = e.target.value.trim().replace(/\s+/g, ' ').slice(0, 40) || ('Plano ' + slot);
+    save();
+  });
+  $('slotName').addEventListener('blur', () => renderSlots());
+  $('slotName').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+
   let clearTimer = null;
   $('clear').addEventListener('click', () => {
     const b = $('clear');
     if (!b.classList.contains('armed')){
       b.classList.add('armed'); b.textContent = 'Confirmar limpieza';
-      clearTimer = setTimeout(() => { b.classList.remove('armed'); b.textContent = 'Limpiar todo'; }, 3000);
+      clearTimer = setTimeout(() => { b.classList.remove('armed'); b.textContent = 'Vaciar este plano'; }, 3000);
       return;
     }
     clearTimeout(clearTimer);
-    b.classList.remove('armed'); b.textContent = 'Limpiar todo';
+    b.classList.remove('armed'); b.textContent = 'Vaciar este plano';
     snapshot();
     const n = makeGrid(st.rows, st.cols);
     st.h = n.h; st.v = n.v; st.f = n.f; st.names = {};
@@ -794,10 +945,290 @@ main{overflow:auto;padding:24px;display:flex}
     shareMsg(`Plano de ${st.rows}×${st.cols} cargado. Puedes volver al anterior con «Deshacer».`, 'ok');
   });
 
+  // ---- Acordeón: recuerda qué secciones están abiertas ----
+  const UI_KEY = 'plano-grilla-ui';
+  (function initAccordion(){
+    const secs = document.querySelectorAll('details.sec');
+    try {
+      const saved = JSON.parse(localStorage.getItem(UI_KEY) || 'null');
+      if (Array.isArray(saved)) secs.forEach(d => { d.open = saved.includes(d.dataset.sec); });
+    } catch(_){}
+    secs.forEach(d => d.addEventListener('toggle', () => {
+      const open = [...secs].filter(x => x.open).map(x => x.dataset.sec);
+      try { localStorage.setItem(UI_KEY, JSON.stringify(open)); } catch(_){}
+    }));
+  })();
+
+  // ---- Botón con confirmación en dos clics ----
+  function confirmClick(btn, label, confirmLabel, action){
+    let timer = null;
+    btn.textContent = label;
+    btn.addEventListener('click', () => {
+      if (!btn.classList.contains('armed')){
+        btn.classList.add('danger', 'armed');
+        btn.textContent = confirmLabel;
+        timer = setTimeout(() => { btn.classList.remove('armed'); btn.textContent = label; }, 3000);
+        return;
+      }
+      clearTimeout(timer);
+      btn.classList.remove('armed');
+      btn.textContent = label;
+      action();
+    });
+  }
+
+  // ---- Historial de versiones local (IndexedDB) ----
+  // Cada versión: { id, nombre, creado, actualizado?, filas, columnas, codigo }
+  // "codigo" usa el mismo formato que «Compartir por código».
+  const IDB_NAME = 'plano-grilla';
+  const IDB_STORE = 'versiones';
+  let idb = null;
+  let versions = [];
+  let currentVer = null;
+  const channel = ('BroadcastChannel' in window) ? new BroadcastChannel('plano-grilla') : null;
+
+  function idbOpen(){
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const d = req.result;
+        if (!d.objectStoreNames.contains(IDB_STORE)){
+          const store = d.createObjectStore(IDB_STORE, { keyPath:'id' });
+          store.createIndex('creado', 'creado');
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+      req.onblocked = () => reject(new Error('blocked'));
+    });
+  }
+  function idbTx(mode, fn){
+    return new Promise((resolve, reject) => {
+      const t = idb.transaction(IDB_STORE, mode);
+      const store = t.objectStore(IDB_STORE);
+      let result;
+      const req = fn(store);
+      if (req) req.onsuccess = () => { result = req.result; };
+      t.oncomplete = () => resolve(result);
+      t.onerror = () => reject(t.error);
+      t.onabort = () => reject(t.error);
+    });
+  }
+  const vGetAll = () => idbTx('readonly', s => s.getAll());
+  const vPut = v => idbTx('readwrite', s => s.put(v));
+  const vDelete = id => idbTx('readwrite', s => s.delete(id));
+  const vPutMany = list => idbTx('readwrite', s => { list.forEach(v => s.put(v)); return null; });
+
+  function newId(){
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  }
+
+  async function refreshVersions(){
+    try {
+      versions = (await vGetAll()).sort((a, b) => (b.creado || 0) - (a.creado || 0));
+      if (currentVer && !versions.some(v => v.id === currentVer)) currentVer = null;
+      renderVersions();
+    } catch(e){ verMsg('No se pudo leer el historial.', 'err'); }
+  }
+  // Avisa a otras pestañas abiertas para que actualicen su lista
+  function notifyChange(){
+    if (channel) try { channel.postMessage('changed'); } catch(_){}
+  }
+  if (channel) channel.onmessage = () => refreshVersions();
+
+  // Pide al navegador que no borre estos datos ante falta de espacio (si lo permite)
+  let persistAsked = false;
+  function askPersist(){
+    if (persistAsked) return;
+    persistAsked = true;
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch(_){}
+  }
+
+  function verMsg(text, kind){
+    const el = $('verMsg');
+    el.textContent = text;
+    el.className = 'msg ' + (kind || '');
+  }
+  function idbErrorText(e){
+    if (e && e.name === 'QuotaExceededError') return 'El navegador no tiene más espacio disponible. Elimina versiones antiguas o exporta un respaldo.';
+    return 'No se pudo completar la operación en el historial.';
+  }
+  function fmtDate(ms){
+    try { return new Date(ms).toLocaleString('es-AR', { dateStyle:'short', timeStyle:'short' }); }
+    catch(_){ return ''; }
+  }
+
+  function renderVersions(){
+    const list = $('verList');
+    list.textContent = '';
+    const badge = $('verCount');
+    badge.hidden = versions.length === 0;
+    badge.textContent = versions.length;
+    if (!versions.length){
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = 'Todavía no hay versiones guardadas.';
+      list.appendChild(li);
+      return;
+    }
+    for (const v of versions){
+      const li = document.createElement('li');
+      if (v.id === currentVer) li.classList.add('cur');
+      const name = document.createElement('div');
+      name.className = 'vname';
+      name.textContent = typeof v.nombre === 'string' && v.nombre ? v.nombre : 'Sin nombre';
+      const meta = document.createElement('div');
+      meta.className = 'vmeta';
+      const upd = v.actualizado ? ` · actualizada ${fmtDate(v.actualizado)}` : '';
+      meta.textContent = `${v.filas || '?'}×${v.columnas || '?'} · ${fmtDate(v.creado)}${upd}${v.id === currentVer ? ' · en uso' : ''}`;
+      const act = document.createElement('div');
+      act.className = 'vact';
+
+      const bLoad = document.createElement('button');
+      bLoad.textContent = 'Cargar';
+      bLoad.addEventListener('click', () => loadVersion(v));
+
+      const bUpd = document.createElement('button');
+      confirmClick(bUpd, 'Sobrescribir', '¿Reemplazar?', () => overwriteVersion(v));
+      bUpd.title = 'Reemplaza esta versión por el plano actual';
+
+      const bDel = document.createElement('button');
+      confirmClick(bDel, 'Eliminar', 'Confirmar', () => deleteVersion(v));
+
+      act.append(bLoad, bUpd, bDel);
+      li.append(name, meta, act);
+      list.appendChild(li);
+    }
+  }
+
+  function loadVersion(v){
+    let d;
+    try { d = decode(String(v.codigo || '')); }
+    catch(e){ verMsg('Esta versión está dañada y no se puede cargar.', 'err'); return; }
+    snapshot();
+    Object.assign(st, d);
+    syncInputs();
+    hover = null;
+    currentVer = v.id;
+    render(); save(); renderVersions();
+    verMsg(`Versión «${v.nombre || 'Sin nombre'}» cargada. «Deshacer» vuelve al plano anterior.`, 'ok');
+  }
+
+  async function overwriteVersion(v){
+    try {
+      await vPut(Object.assign({}, v, { codigo: encode(), filas: st.rows, columnas: st.cols, actualizado: Date.now() }));
+      currentVer = v.id;
+      await refreshVersions(); notifyChange();
+      verMsg(`Versión «${v.nombre || 'Sin nombre'}» actualizada con el plano actual.`, 'ok');
+    } catch(e){ verMsg(idbErrorText(e), 'err'); }
+  }
+
+  async function deleteVersion(v){
+    try {
+      await vDelete(v.id);
+      if (currentVer === v.id) currentVer = null;
+      await refreshVersions(); notifyChange();
+      verMsg(`Versión «${v.nombre || 'Sin nombre'}» eliminada.`, 'ok');
+    } catch(e){ verMsg(idbErrorText(e), 'err'); }
+  }
+
+  $('verSave').addEventListener('click', async () => {
+    if (!idb) return;
+    const btn = $('verSave');
+    const nombre = ($('verName').value.trim().replace(/\s+/g, ' ') || `Versión del ${fmtDate(Date.now())}`).slice(0, 60);
+    btn.disabled = true;
+    try {
+      const v = { id: newId(), nombre, creado: Date.now(), filas: st.rows, columnas: st.cols, codigo: encode() };
+      await vPut(v);
+      askPersist();
+      currentVer = v.id;
+      $('verName').value = '';
+      await refreshVersions(); notifyChange();
+      verMsg(`Versión «${nombre}» guardada.`, 'ok');
+    } catch(e){ verMsg(idbErrorText(e), 'err'); }
+    finally { btn.disabled = false; }
+  });
+  $('verName').addEventListener('keydown', e => { if (e.key === 'Enter') $('verSave').click(); });
+
+  // ---- Respaldo: exportar e importar todas las versiones en un archivo JSON ----
+  $('verExport').addEventListener('click', () => {
+    if (!versions.length){ verMsg('No hay versiones para exportar.', 'err'); return; }
+    const data = { app:'plano-grilla', formato:1, exportado: Date.now(), versiones: versions };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    a.href = url;
+    a.download = `planos-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    verMsg(versions.length === 1 ? 'Respaldo exportado con 1 versión.' : `Respaldo exportado con ${versions.length} versiones.`, 'ok');
+  });
+
+  $('verImport').addEventListener('click', () => $('verFile').click());
+  $('verFile').addEventListener('change', async e => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file || !idb) return;
+    let data;
+    try { data = JSON.parse(await file.text()); }
+    catch(_){ verMsg('El archivo no es un respaldo válido.', 'err'); return; }
+    if (!data || data.app !== 'plano-grilla' || !Array.isArray(data.versiones)){
+      verMsg('El archivo no es un respaldo de este editor de planos.', 'err'); return;
+    }
+    const ok = [];
+    let bad = 0;
+    for (const v of data.versiones){
+      try {
+        const d = decode(String(v.codigo || ''));
+        ok.push({
+          id: typeof v.id === 'string' && v.id ? v.id.slice(0, 64) : newId(),
+          nombre: (typeof v.nombre === 'string' && v.nombre ? v.nombre : 'Sin nombre').slice(0, 60),
+          creado: Number(v.creado) || Date.now(),
+          actualizado: Number(v.actualizado) || undefined,
+          filas: d.rows, columnas: d.cols,
+          codigo: String(v.codigo)
+        });
+      } catch(_){ bad++; }
+    }
+    if (!ok.length){ verMsg('El respaldo no contiene versiones válidas.', 'err'); return; }
+    try {
+      const existing = new Set(versions.map(v => v.id));
+      const replaced = ok.filter(v => existing.has(v.id)).length;
+      await vPutMany(ok);
+      askPersist();
+      await refreshVersions(); notifyChange();
+      let txt = ok.length === 1 ? 'Se importó 1 versión' : `Se importaron ${ok.length} versiones`;
+      if (replaced) txt += replaced === 1 ? ' (1 ya existía y se actualizó)' : ` (${replaced} ya existían y se actualizaron)`;
+      if (bad) txt += bad === 1 ? '; 1 estaba dañada y se omitió' : `; ${bad} estaban dañadas y se omitieron`;
+      verMsg(txt + '.', bad ? 'err' : 'ok');
+    } catch(err){ verMsg(idbErrorText(err), 'err'); }
+  });
+
+  (async function initHistory(){
+    renderVersions();
+    if (!('indexedDB' in window)){
+      verMsg('Este navegador no permite guardar versiones localmente.', 'err');
+      $('verSave').disabled = true; $('verImport').disabled = true;
+      return;
+    }
+    try {
+      idb = await idbOpen();
+      await refreshVersions();
+    } catch(e){
+      verMsg('No se pudo abrir el historial local (puede ocurrir en modo incógnito).', 'err');
+      $('verSave').disabled = true; $('verImport').disabled = true;
+    }
+  })();
+
   // ---- Atajos de teclado ----
   document.addEventListener('keydown', e => {
     const tg = e.target.tagName;
-    if (tg === 'TEXTAREA' || (tg === 'INPUT' && e.target.type === 'number')) return;
+    if (tg === 'TEXTAREA' || (tg === 'INPUT' && (e.target.type === 'number' || e.target.type === 'text'))) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){ e.preventDefault(); undo(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'r' || e.key === 'R'){ rotate(); return; }
@@ -808,6 +1239,7 @@ main{overflow:auto;padding:24px;display:flex}
   load();
   syncInputs();
   render();
+  renderSlots();
 })();
 </script>
 </body>
