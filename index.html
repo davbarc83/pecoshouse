@@ -449,6 +449,16 @@ main{overflow:auto;padding:24px;display:flex}
     const limit = onlyType ? 0.5 : 0.34;
     return cand.length && cand[0].d <= limit ? cand[0] : null;
   }
+  // Durante un trazo: devuelve el borde de la línea fija que corresponde a la posición del cursor
+  function lockedEdge(ev){
+    const { fx, fy } = toGrid(ev);
+    if (drag.type === 'h'){
+      const j = Math.min(st.cols - 1, Math.max(0, Math.floor(fx)));
+      return { t:'h', i:drag.line, j, pos:j };
+    }
+    const i = Math.min(st.rows - 1, Math.max(0, Math.floor(fy)));
+    return { t:'v', i, j:drag.line, pos:i };
+  }
   function hitCell(ev){
     const { fx, fy } = toGrid(ev);
     const i = Math.floor(fy), j = Math.floor(fx);
@@ -762,7 +772,9 @@ main{overflow:auto;padding:24px;display:flex}
         const cur = getE(e);
         const val = tool === 0 ? 0 : (cur === tool ? 0 : tool);
         setE(e, val);
-        drag = { mode:'e', val, type:e.t, last:keyE(e), keys:new Set([keyE(e)]) };
+        // La fila (horizontal) o columna (vertical) queda fija durante todo el trazo
+        drag = { mode:'e', val, type:e.t, line: e.t === 'h' ? e.i : e.j, pos: e.t === 'h' ? e.j : e.i,
+                 last:keyE(e), keys:new Set([keyE(e)]) };
         target = e;
         showTip(ev);
       } else if (tool === 0){
@@ -784,8 +796,18 @@ main{overflow:auto;padding:24px;display:flex}
     let h;
     if (drag){
       if (drag.mode === 'e'){
-        h = hitEdge(ev, drag.type);
-        if (h && keyE(h) !== drag.last){ setE(h, drag.val); drag.last = keyE(h); drag.keys.add(keyE(h)); }
+        h = lockedEdge(ev);
+        if (h.pos !== drag.pos){
+          const step = h.pos > drag.pos ? 1 : -1;
+          for (let p = drag.pos + step; ; p += step){
+            const e = drag.type === 'h' ? { t:'h', i:drag.line, j:p } : { t:'v', i:p, j:drag.line };
+            setE(e, drag.val);
+            drag.keys.add(keyE(e));
+            if (p === h.pos) break;
+          }
+          drag.pos = h.pos;
+          drag.last = keyE(h);
+        }
         showTip(ev);
       } else {
         h = hitCell(ev);
