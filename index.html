@@ -112,12 +112,21 @@ main{overflow:auto;padding:24px;display:flex}
 .fu *{fill:none;stroke:var(--furn);stroke-width:3.5;stroke-linejoin:round;stroke-linecap:round}
 .fu .b{fill:var(--furn-bg)}
 .fu .nb{stroke:none}
+.fu .bk{fill:var(--furn);fill-opacity:.45;stroke:none}
 .floorbar{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));right:18px;z-index:20;display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 .frow{display:flex;align-items:center;gap:8px}
 .ftools{display:flex;gap:4px}
 .ftools button{width:36px;height:34px;padding:0;display:flex;align-items:center;justify-content:center}
 .ftools button.sel{border-color:var(--hover);box-shadow:inset 0 0 0 1px var(--hover);background:var(--sheet)}
 .fsep{width:1px;align-self:stretch;background:var(--border)}
+.fhelpbtn{width:30px;height:34px;padding:0;font-weight:700;color:var(--muted)}
+.fhelpbtn[aria-pressed="true"]{color:var(--hover);border-color:var(--hover)}
+.fhelp{margin:0;max-width:420px;font-size:.8rem;line-height:1.4;color:var(--muted)}
+.fhelp strong{color:var(--ink);font-weight:600}
+.fhelp[hidden]{display:none}
+#plan.moving{cursor:grab}
+#plan .mvsrc{fill:var(--hover);opacity:.12}
+#plan .mvbad{fill:#B3412F;opacity:.35}
 .fseg{display:flex;gap:4px}
 .fseg button{flex:1;padding:6px 14px;font-weight:600;font-size:.88rem;white-space:nowrap}
 .fseg button.sel{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
@@ -215,6 +224,7 @@ main{overflow:auto;padding:24px;display:flex}
       <button type="button" data-tool="1" title="Pared (1)" aria-label="Pared"><svg width="20" height="20" viewBox="0 0 18 18"><line x1="2" y1="9" x2="16" y2="9" stroke="currentColor" stroke-width="4"/></svg></button>
       <button type="button" data-tool="2" title="Puerta (2) — clic sobre una puerta para rotarla" aria-label="Puerta"><svg width="20" height="20" viewBox="0 0 18 18"><path d="M3 3 L3 15 M15 3 A12 12 0 0 1 3 15" fill="none" stroke="var(--door)" stroke-width="1.8"/></svg></button>
       <button type="button" data-tool="3" title="Ventana (3)" aria-label="Ventana"><svg width="20" height="20" viewBox="0 0 18 18"><rect x="2" y="7" width="14" height="4" fill="none" stroke="var(--window)" stroke-width="1.6"/><line x1="2" y1="9" x2="16" y2="9" stroke="var(--window)" stroke-width="1"/></svg></button>
+      <button type="button" data-tool="mv" title="Mover (5)" aria-label="Mover"><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1.5 V16.5 M1.5 9 H16.5 M9 1.5 L6.8 3.7 M9 1.5 L11.2 3.7 M9 16.5 L6.8 14.3 M9 16.5 L11.2 14.3 M1.5 9 L3.7 6.8 M1.5 9 L3.7 11.2 M16.5 9 L14.3 6.8 M16.5 9 L14.3 11.2"/></svg></button>
       <button type="button" data-tool="0" title="Borrar (4)" aria-label="Borrar"><svg width="20" height="20" viewBox="0 0 18 18"><path d="M4 4 L14 14 M14 4 L4 14" stroke="currentColor" stroke-width="2"/></svg></button>
     </div>
     <span class="fsep" aria-hidden="true"></span>
@@ -222,7 +232,9 @@ main{overflow:auto;padding:24px;display:flex}
       <button type="button" data-piso="0">Piso 1</button>
       <button type="button" data-piso="1">Piso 2</button>
     </div>
+    <button type="button" class="fhelpbtn" id="helpToggle" title="Mostrar u ocultar la ayuda" aria-label="Ayuda" aria-pressed="true">?</button>
   </div>
+  <p class="fhelp" id="toolHelp" role="status"></p>
   <label class="fop" id="fop" hidden>Planta baja<input type="range" id="underOp" min="0" max="100" step="5"><span class="val" id="underVal"></span></label>
 </div>
 <div id="tip" aria-hidden="true"></div>
@@ -258,10 +270,10 @@ main{overflow:auto;padding:24px;display:flex}
     { k:'y', n:'Estufa', d:'<rect class="b" x="12" y="4" width="76" height="28" rx="3"/><path d="M26 11 V25 M38 11 V25 M50 11 V25 M62 11 V25 M74 11 V25" stroke-opacity=".6"/><path d="M50 44 C42 54 44 62 50 66 C56 62 58 54 50 44 Z" stroke-opacity=".7"/>' },
     { k:'s', n:'Sillón recto', d:'<rect class="b nb" x="0" y="4" width="100" height="92"/><path d="M0 4 H100 M0 30 H100 M0 96 H100"/>' },
     { k:'t', n:'Sillón esquina', d:'<path class="b nb" d="M4 4 H100 V100 H4 Z"/><path d="M4 100 V4 H100 M30 100 V30 H100 M96 100 V96 H100"/>' },
-    { k:'u', n:'Mesada recta', d:'<rect class="b nb" x="0" y="0" width="100" height="100"/><path d="M0 8 H100 M0 97 H100"/>' },
-    { k:'v', n:'Mesada esquina', d:'<rect class="b nb" x="0" y="0" width="100" height="100"/><path d="M8 100 V8 H100 M97 100 V97 H100"/>' },
-    { k:'w', n:'Mesada anafe', d:'<rect class="b nb" x="0" y="0" width="100" height="100"/><path d="M0 8 H100 M0 97 H100"/><rect x="14" y="18" width="72" height="70" rx="4" stroke-opacity=".5"/><circle cx="32" cy="36" r="10"/><circle cx="68" cy="36" r="10"/><circle cx="32" cy="70" r="10"/><circle cx="68" cy="70" r="10"/>' },
-    { k:'x', n:'Mesada bacha', d:'<rect class="b nb" x="0" y="0" width="100" height="100"/><path d="M0 8 H100 M0 97 H100"/><rect x="18" y="26" width="64" height="58" rx="12"/><circle cx="50" cy="17" r="4"/>' },
+    { k:'u', n:'Mesada recta', d:'<rect class="b nb" x="0" y="0" width="100" height="100"/><rect class="bk" x="0" y="0" width="100" height="18"/><path d="M0 18 H100 M0 97 H100"/>' },
+    { k:'v', n:'Mesada esquina', d:'<rect class="b nb" x="0" y="0" width="100" height="100"/><path class="bk" d="M0 0 H100 V18 H18 V100 H0 Z"/><path d="M18 100 V18 H100 M97 100 V97 H100"/>' },
+    { k:'w', n:'Mesada anafe', d:'<rect class="b nb" x="0" y="0" width="100" height="100"/><rect class="bk" x="0" y="0" width="100" height="18"/><path d="M0 18 H100 M0 97 H100"/><rect x="14" y="24" width="72" height="66" rx="4" stroke-opacity=".5"/><circle cx="32" cy="41" r="10"/><circle cx="68" cy="41" r="10"/><circle cx="32" cy="73" r="10"/><circle cx="68" cy="73" r="10"/>' },
+    { k:'x', n:'Mesada bacha', d:'<rect class="b nb" x="0" y="0" width="100" height="100"/><rect class="bk" x="0" y="0" width="100" height="18"/><path d="M0 18 H100 M0 97 H100"/><rect x="18" y="32" width="64" height="54" rx="12"/><circle cx="50" cy="25" r="4"/>' },
     { k:'z', n:'Silla', d:'<rect class="b" x="26" y="4" width="48" height="34" rx="5"/><rect class="b" x="24" y="40" width="52" height="8" rx="3"/>' },
     { k:'p', n:'Planta', d:'<circle class="b" cx="50" cy="50" r="30"/><path d="M50 20 V80 M20 50 H80 M29 29 L71 71 M71 29 L29 71"/><circle class="b" cx="50" cy="50" r="8"/>' }
   ];
@@ -278,6 +290,7 @@ main{overflow:auto;padding:24px;display:flex}
   let rot = 0;
   let hover = null;
   let drag = null;
+  let moveShift = false;   // Shift presionado: el resaltado muestra el grupo completo
   const SLOTS = 10;
   const undoStacks = {};
   for (let n = 1; n <= SLOTS; n++) undoStacks[n] = [];
@@ -435,6 +448,11 @@ main{overflow:auto;padding:24px;display:flex}
     id: 'slot1-n-2026-09',
     slots: {
       1: { nombre: 'Mi plano', codigo: 'PLANO3;24;24;0.5;000000000000000000000000111111111111111111111111000000000000000000000000000000000000000000000000111110000000000000000000000002111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111114331433333311331100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000111110000000011111111500000000000000000000000000000000000000000000000000000001461333100000000000133310000000013131111146000000000000000000000000000000000000000000000000111111111111111111111111;000000000000000000000000010000100010000000000000011000040002000000000000001100001000100000000000000110000100010000000000000011000010001000000000000001100001000300000000000000110000100030000000000000011000010003000000000000001100006000300000000000000110000100010000000000000011000040000100000100000101100003000000000010000010110000300000000001000001011000030000000000100000101100003000000000010000010110000300000000002000001011000040000000200004000101100001000000010000100010110000100000001000010001011000010000000100001000101100000000000000000000000110000000000000000000000011000000000000000000000001;1.0.m.0,1.1.f.0,1.5.m.0,1.6.u.0,5.0.k.0,5.1.k.0,5.8.b.1,6.8.b.1,7.8.b.1,8.8.b.1,9.1.b.3,9.8.b.1,10.1.b.3,10.8.b.1,11.0.r.0,11.1.r.0,11.2.r.0,11.3.r.0,11.4.r.0,11.10.u.0,11.11.u.0,11.12.u.0,11.13.x.0,11.14.u.0,11.15.v.1,12.15.u.3,13.6.z.1,13.7.t.0,13.8.t.1,13.9.z.3,13.12.u.3,13.15.u.3,13.18.a.1,13.19.a.1,13.20.a.1,13.21.a.1,14.0.s.3,14.2.q.0,14.3.q.0,14.6.z.1,14.7.s.3,14.8.s.1,14.9.z.3,14.12.w.3,14.15.u.3,14.18.a.1,14.19.a.1,14.20.a.1,14.21.a.1,15.0.s.3,15.6.z.1,15.7.t.3,15.8.t.2,15.9.z.3,15.12.u.3,15.15.u.3,15.18.a.1,15.19.a.1,15.20.a.1,15.21.a.1,16.0.t.3,16.1.s.2,16.2.s.2,16.3.s.2,16.4.s.2,17.0.p.0,19.9.s.2,19.10.s.2,19.11.s.2,20.1.l.2,20.2.l.2,20.17.k.2,20.18.k.2,20.19.k.2,20.20.k.2,22.3.p.0,22.17.p.0;7.2.Oficina%20David,18.2.Oficina%20Peca,22.10.Jard%C3%ADn%20de%20entrada,14.19.Dormitorio,6.16.Jard%C3%ADn,2.1.Galp%C3%B3n%20%2F%20Guardado,2.6.Lavadero,7.6.Rinc%C3%B3n%20de%20lectura,18.18.Bano,18.20.Vestidor,14.8.Cocina%20%2F%20Comedor,13.2.Proyector' }
+    }
+  }, {
+    id: 'slot1-n2-2026-09',
+    slots: {
+      1: { nombre: 'Mi plano', codigo: 'PLANO3;24;24;0.5;000000000000000000000000111111111111111111111111000000000000000000000000000000000000000000000000111110000000000000000000000002111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000111114331433333311331100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000111110000000011111111500000000000000000000000000000000000000000000000000000001461333100000000000133310000000013131111146000000000000000000000000000000000000000000000000111111111111111111111111;000000000000000000000000010000100010000000000000011000040002000000000000001100001000100000000000000110000100010000000000000011000010001000000000000001100001000300000000000000110000100030000000000000011000010003000000000000001100006000300000000000000110000100010000000000000011000040000100000100000101100003000000000010000010110000300000000001000001011000030000000000100000101100003000000000010000010110000300000000002000001011000040000000200004000101100001000000010000100010110000100000001000010001011000010000000100001000101100000000000000000000000110000000000000000000000011000000000000000000000001;1.0.m.0,1.1.f.0,1.5.m.0,1.6.u.0,5.0.k.0,5.1.k.0,5.8.b.1,6.8.b.1,7.8.b.1,8.8.b.1,9.1.b.3,9.8.b.1,10.1.b.3,10.8.b.1,11.0.r.0,11.1.r.0,11.2.r.0,11.3.r.0,11.4.r.0,11.10.u.0,11.11.u.0,11.12.u.0,11.13.x.0,11.14.u.0,11.15.v.1,12.15.u.3,13.6.z.1,13.7.t.0,13.8.t.1,13.9.z.3,13.12.u.3,13.15.u.3,13.18.a.1,13.19.a.1,13.20.a.1,13.21.a.1,14.0.s.3,14.2.q.0,14.3.q.0,14.6.z.1,14.7.s.3,14.8.s.1,14.9.z.3,14.12.w.3,14.15.u.3,14.18.a.1,14.19.a.1,14.20.a.1,14.21.a.1,15.0.s.3,15.6.z.1,15.7.t.3,15.8.t.2,15.9.z.3,15.12.u.3,15.15.u.3,15.18.a.1,15.19.a.1,15.20.a.1,15.21.a.1,16.0.t.3,16.1.s.2,16.2.s.2,16.3.s.2,16.4.s.2,17.0.p.0,19.9.s.2,19.10.s.2,19.11.s.2,20.1.l.2,20.2.l.2,20.17.k.2,20.18.k.2,20.19.k.2,20.20.k.2,22.3.p.0,22.17.p.0;7.2.Oficina%20David,18.2.Oficina%20Peca,22.10.Jard%C3%ADn%20de%20entrada,14.19.Dormitorio,6.16.Jard%C3%ADn,2.1.Galp%C3%B3n%20%2F%20Guardado,2.6.Lavadero,7.6.Rinc%C3%B3n%20de%20lectura,18.18.Bano,18.20.Vestidor,14.8.Cocina%20%2F%20Comedor,13.2.Proyector,18.15.Ba%C3%B1o' }
     }
   }];
   // Parches mínimos: solo se aplican si las paredes del espacio siguen idénticas al diseño original.
@@ -888,7 +906,7 @@ main{overflow:auto;padding:24px;display:flex}
 
     // Muebles
     for (let i = 0; i < st.rows; i++) for (let j = 0; j < st.cols; j++)
-      if (st.f[i][j]) g += drawFurn(i, j, st.f[i][j]);
+      if (st.f[i][j] && !(drag && drag.mode === 'mv' && drag.cells.some(c => c.i === i && c.j === j))) g += drawFurn(i, j, st.f[i][j]);
 
     // Aberturas primero, paredes encima
     let walls = '', others = '';
@@ -906,8 +924,12 @@ main{overflow:auto;padding:24px;display:flex}
     roomMeta = [];
     if (st.showRooms) rooms.forEach((cells, idx) => { g += drawRoomLabel(cells, idx); });
 
-    if (hover){
-      if (hover.t === 'c'){
+    if (drag && drag.mode === 'mv') g += drawMove();
+    if (hover && !(drag && drag.mode === 'mv')){
+      if (hover.t === 'c' && tool === 'mv'){
+        const cells = moveShift ? furnGroup(hover.i, hover.j) : [[hover.i, hover.j]];
+        for (const [i, j] of cells) g += `<rect class="hovc" x="${PAD + j * S}" y="${PAD + i * S}" width="${S}" height="${S}"/>`;
+      } else if (hover.t === 'c'){
         if (tool === 'f' && !drag) g += drawFurn(hover.i, hover.j, { k:furnSel, o:rot }, 'ghost');
         else g += `<rect class="hovc" x="${PAD + hover.j * S}" y="${PAD + hover.i * S}" width="${S}" height="${S}"/>`;
       } else {
@@ -934,12 +956,68 @@ main{overflow:auto;padding:24px;display:flex}
       `<span>Puertas: <strong>${d}</strong> · Ventanas: <strong>${win}</strong> · Muebles: <strong>${fu}</strong></span>`;
   }
 
+  // ---- Mover muebles ----
+  // Grupo conectado: muebles que se tocan por un lado (no en diagonal)
+  function furnGroup(i, j){
+    const out = [], seen = new Set([i + '_' + j]), stack = [[i, j]];
+    while (stack.length){
+      const [a, b] = stack.pop();
+      out.push([a, b]);
+      for (const [na, nb] of [[a - 1, b], [a + 1, b], [a, b - 1], [a, b + 1]]){
+        const k = na + '_' + nb;
+        if (na < 0 || nb < 0 || na >= st.rows || nb >= st.cols || seen.has(k) || !st.f[na][nb]) continue;
+        seen.add(k); stack.push([na, nb]);
+      }
+    }
+    return out;
+  }
+  // ¿Puede ubicarse el grupo desplazado (di, dj)? No sale de la grilla ni pisa otros muebles
+  function moveValid(m){
+    const inGroup = new Set(m.cells.map(c => c.i + '_' + c.j));
+    return m.cells.every(c => {
+      const ni = c.i + m.di, nj = c.j + m.dj;
+      if (ni < 0 || nj < 0 || ni >= st.rows || nj >= st.cols) return false;
+      return !st.f[ni][nj] || inGroup.has(ni + '_' + nj);
+    });
+  }
+  function drawMove(){
+    const S = st.cell, m = drag;
+    let g = '';
+    const ok = moveValid(m);
+    for (const c of m.cells){
+      g += `<rect class="mvsrc" x="${PAD + c.j * S}" y="${PAD + c.i * S}" width="${S}" height="${S}"/>`;
+      const ni = c.i + m.di, nj = c.j + m.dj;
+      if (ni < 0 || nj < 0 || ni >= st.rows || nj >= st.cols) continue;
+      if (!ok) g += `<rect class="mvbad" x="${PAD + nj * S}" y="${PAD + ni * S}" width="${S}" height="${S}"/>`;
+      g += drawFurn(ni, nj, c.item, 'ghost');
+    }
+    return g;
+  }
+  function finishMove(){
+    const m = drag;
+    if (!m || m.mode !== 'mv') return;
+    if ((m.di || m.dj) && moveValid(m)){
+      snapshot();
+      for (const c of m.cells) st.f[c.i][c.j] = null;
+      for (const c of m.cells) st.f[c.i + m.di][c.j + m.dj] = { k:c.item.k, o:c.item.o || 0 };
+      hover = { t:'c', i:m.anchor.i + m.di, j:m.anchor.j + m.dj };
+      save();
+    }
+  }
+
   // ---- Interacción con el plano ----
   svg.addEventListener('pointerdown', ev => {
     const nameEl = ev.target.closest && ev.target.closest('.rname');
     if (nameEl){ ev.preventDefault(); setTimeout(() => startNameEdit(nameEl), 0); return; }
     let target = null;
-    if (tool === 'f'){
+    if (tool === 'mv'){
+      const c = hitCell(ev);
+      if (!c || !st.f[c.i][c.j]) return;
+      const cells = (ev.shiftKey ? furnGroup(c.i, c.j) : [[c.i, c.j]])
+        .map(([i, j]) => ({ i, j, item:{ k:st.f[i][j].k, o:st.f[i][j].o || 0 } }));
+      drag = { mode:'mv', cells, anchor:{ i:c.i, j:c.j }, di:0, dj:0 };
+      target = c;
+    } else if (tool === 'f'){
       const c = hitCell(ev);
       if (!c) return;
       snapshot();
@@ -985,6 +1063,7 @@ main{overflow:auto;padding:24px;display:flex}
 
   svg.addEventListener('pointermove', ev => {
     let h;
+    moveShift = ev.shiftKey;
     if (drag){
       if (drag.mode === 'e'){
         h = lockedEdge(ev);
@@ -1000,12 +1079,22 @@ main{overflow:auto;padding:24px;display:flex}
           drag.last = keyE(h);
         }
         showTip(ev);
+      } else if (drag.mode === 'mv'){
+        const { fx, fy } = toGrid(ev);
+        drag.di = Math.floor(fy) - drag.anchor.i;
+        drag.dj = Math.floor(fx) - drag.anchor.j;
+        tip.textContent = drag.cells.length === 1 ? 'Moviendo 1 pieza' : `Moviendo ${drag.cells.length} piezas`;
+        tip.style.display = 'block';
+        tip.style.left = (ev.clientX + 14) + 'px';
+        tip.style.top = (ev.clientY + 14) + 'px';
+        h = null;
       } else {
         h = hitCell(ev);
         if (h && keyE(h) !== drag.last){ st.f[h.i][h.j] = drag.val ? { k:drag.val.k, o:drag.val.o } : null; drag.last = keyE(h); }
       }
     } else {
-      h = tool === 'f' ? hitCell(ev) : (hitEdge(ev) || (tool === 0 ? hitCell(ev) : null));
+      h = (tool === 'f' || tool === 'mv') ? hitCell(ev) : (hitEdge(ev) || (tool === 0 ? hitCell(ev) : null));
+      if (h && tool === 'mv' && !st.f[h.i][h.j]) h = null;
     }
     const changed = (hover ? keyE(hover) : '') !== (h ? keyE(h) : '');
     hover = h;
@@ -1020,6 +1109,7 @@ main{overflow:auto;padding:24px;display:flex}
   }
   const endDrag = () => {
     tip.style.display = 'none';
+    if (drag && drag.mode === 'mv'){ finishMove(); drag = null; render(); return; }
     if (drag){ drag = null; save(); render(); }
   };
   svg.addEventListener('pointerup', endDrag);
@@ -1027,9 +1117,31 @@ main{overflow:auto;padding:24px;display:flex}
   svg.addEventListener('pointerleave', () => { if (!drag){ hover = null; render(); } });
 
   // ---- Herramientas ----
+  const TOOL_HELP = {
+    '1': '<strong>Pared:</strong> clic cerca del borde de un cuadro para poner o quitar una pared. Mantén presionado y arrastra para trazar una línea recta.',
+    '2': '<strong>Puerta:</strong> clic en un borde para colocarla. Clic sobre una puerta existente para rotarla (bisagra y sentido de apertura).',
+    '3': '<strong>Ventana:</strong> clic en un borde para colocarla. Arrastra para hacer una ventana corrida.',
+    '0': '<strong>Borrar:</strong> cerca de un borde borra paredes, puertas y ventanas; en el centro de un cuadro borra el mueble.',
+    'mv': '<strong>Mover:</strong> arrastra un mueble para moverlo solo. Con <strong>Shift</strong> presionado arrastras todo el grupo de muebles que se tocan (por ejemplo, una mesa con sus sillas). Esc cancela.',
+    'f': '<strong>Mueble:</strong> clic en un cuadro para colocarlo; arrastra para repetirlo. <strong>R</strong> cambia la orientación. Clic sobre el mismo mueble lo quita.'
+  };
+  function renderHelp(){
+    const on = uiPref('help', true);
+    $('toolHelp').hidden = !on;
+    $('helpToggle').setAttribute('aria-pressed', String(on));
+    $('toolHelp').innerHTML = TOOL_HELP[String(tool)] || '';
+  }
+  function uiPref(k, def){
+    try { const v = JSON.parse(localStorage.getItem('plano-grilla-ui-prefs') || '{}'); return k in v ? v[k] : def; } catch(_){ return def; }
+  }
+  function setUiPref(k, val){
+    try { const v = JSON.parse(localStorage.getItem('plano-grilla-ui-prefs') || '{}'); v[k] = val; localStorage.setItem('plano-grilla-ui-prefs', JSON.stringify(v)); } catch(_){}
+  }
   function renderToolUI(){
+    svg.classList.toggle('moving', tool === 'mv');
+    renderHelp();
     document.querySelectorAll('#toolbar [data-tool]').forEach(b => {
-      const on = tool !== 'f' && +b.dataset.tool === tool;
+      const on = tool !== 'f' && String(tool) === b.dataset.tool;
       b.classList.toggle('sel', on);
       b.setAttribute('aria-pressed', String(on));
     });
@@ -1041,10 +1153,18 @@ main{overflow:auto;padding:24px;display:flex}
     document.querySelectorAll('#palette button').forEach(b => b.classList.remove('sel'));
     renderToolUI();
   }
+  function selectMove(){
+    tool = 'mv';
+    document.querySelectorAll('input[name=tool]').forEach(r => { r.checked = false; });
+    document.querySelectorAll('#palette button').forEach(b => b.classList.remove('sel'));
+    renderToolUI();
+  }
   $('toolbar').addEventListener('click', e => {
     const b = e.target.closest('[data-tool]');
-    if (b) selectEdgeTool(+b.dataset.tool);
+    if (!b) return;
+    if (b.dataset.tool === 'mv') selectMove(); else selectEdgeTool(+b.dataset.tool);
   });
+  $('helpToggle').addEventListener('click', () => { setUiPref('help', !uiPref('help', true)); renderHelp(); });
   document.querySelectorAll('input[name=tool]').forEach(r =>
     r.addEventListener('change', () => selectEdgeTool(+r.value)));
 
@@ -1271,9 +1391,17 @@ main{overflow:auto;padding:24px;display:flex}
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){ e.preventDefault(); undo(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'r' || e.key === 'R'){ rotate(); return; }
+    if (e.key === 'Escape' && drag && drag.mode === 'mv'){ drag = null; tip.style.display = 'none'; render(); return; }
+    if (e.key === '5'){ selectMove(); return; }
     const map = { '1':'t1', '2':'t2', '3':'t3', '4':'t0' };
     if (map[e.key]){ const r = $(map[e.key]); r.checked = true; selectEdgeTool(+r.value); }
   });
+  const trackShift = e => {
+    const v = e.shiftKey;
+    if (v !== moveShift){ moveShift = v; if (tool === 'mv' && !drag) render(); }
+  };
+  document.addEventListener('keydown', trackShift);
+  document.addEventListener('keyup', trackShift);
 
   load();
   syncInputs();
