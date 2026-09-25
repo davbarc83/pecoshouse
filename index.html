@@ -11,7 +11,7 @@
 :root{
   --paper:#171C21; --sheet:#20272E; --grid:#303A43; --grid-strong:#44505A;
   --ink:#E6EBEE; --muted:#9AA6AD; --door:#52B7A0; --window:#76A5DE; --hover:#F0B43C;
-  --panel:#1C2228; --border:#39444D; --room:#223029; --furn:#CDB999; --furn-bg:#29313A;
+  --panel:#1C2228; --border:#39444D; --room:#0f1319; --furn:#CDB999; --furn-bg:#29313A;
   color-scheme:dark;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
@@ -27,12 +27,13 @@ aside{background:var(--panel);border-right:1px solid var(--border);padding:20px 
 .head{padding-bottom:14px;border-bottom:1px solid var(--border)}
 .slotsec{padding:14px 0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
 .slotlbl{font-weight:600;font-size:.95rem}
-.slots{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
-.slot{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 8px;min-width:0;text-align:left}
-.slot .sname{font-weight:600;font-size:.85rem;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.slot .smeta{font-size:.7rem;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slots{display:flex;flex-direction:column;gap:4px}
+.slot{display:flex;flex-direction:row;align-items:baseline;justify-content:space-between;gap:10px;padding:6px 10px;min-width:0;text-align:left;width:100%}
+.slot .sname{font-weight:600;font-size:.85rem;flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere}
+.slot .smeta{font-size:.7rem;color:var(--muted);flex:none;white-space:nowrap}
 .slot.sel{border-color:var(--door);box-shadow:inset 0 0 0 1px var(--door)}
 details.sec{border-bottom:1px solid var(--border)}
+details.sec[data-sec="paredes"]{display:none}
 details.sec > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:13px 2px;font-weight:600;font-size:.95rem;user-select:none}
 details.sec > summary::-webkit-details-marker{display:none}
 details.sec > summary::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s ease;margin-top:-4px}
@@ -112,6 +113,11 @@ main{overflow:auto;padding:24px;display:flex}
 .fu .b{fill:var(--furn-bg)}
 .fu .nb{stroke:none}
 .floorbar{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));right:18px;z-index:20;display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.frow{display:flex;align-items:center;gap:8px}
+.ftools{display:flex;gap:4px}
+.ftools button{width:36px;height:34px;padding:0;display:flex;align-items:center;justify-content:center}
+.ftools button.sel{border-color:var(--hover);box-shadow:inset 0 0 0 1px var(--hover);background:var(--sheet)}
+.fsep{width:1px;align-self:stretch;background:var(--border)}
 .fseg{display:flex;gap:4px}
 .fseg button{flex:1;padding:6px 14px;font-weight:600;font-size:.88rem;white-space:nowrap}
 .fseg button.sel{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
@@ -168,42 +174,18 @@ main{overflow:auto;padding:24px;display:flex}
     </details>
 
     <details class="sec" data-sec="grilla">
-      <summary>Tamaño de la grilla</summary>
+      <summary>Grilla, vista y escala</summary>
       <div class="body">
         <div class="row">
           <label class="field">Filas<input id="rows" type="number" min="1" max="80" value="12"></label>
           <label class="field">Columnas<input id="cols" type="number" min="1" max="80" value="12"></label>
         </div>
         <button id="apply" class="primary">Aplicar tamaño</button>
-      </div>
-    </details>
-
-    <details class="sec" data-sec="vista">
-      <summary>Vista y escala</summary>
-      <div class="body">
         <label class="field">Tamaño de cada cuadro en pantalla<input id="zoom" type="range" min="20" max="90" value="44"></label>
         <label class="field">Metros por cuadro<input id="meters" type="number" min="0.1" step="0.1" value="1"></label>
         <label class="check"><input id="dims" type="checkbox" checked>Mostrar medidas de las paredes</label>
         <label class="check"><input id="rooms" type="checkbox" checked>Mostrar medidas de los ambientes</label>
         <div class="stats" id="stats"></div>
-      </div>
-    </details>
-
-    <details class="sec" data-sec="versiones">
-      <summary>Versiones guardadas <span class="badge" id="verCount" hidden></span></summary>
-      <div class="body">
-        <div id="verBox" class="vbox">
-          <label class="field">Nombre de la versión<input id="verName" type="text" maxlength="60" placeholder="Opcional"></label>
-          <button id="verSave" class="primary">Guardar versión actual</button>
-          <p class="msg" id="verMsg" role="status"></p>
-          <ul class="vlist" id="verList"></ul>
-          <div class="actions" style="padding-top:4px">
-            <button id="verExport">Exportar respaldo</button>
-            <button id="verImport">Importar respaldo</button>
-          </div>
-          <input type="file" id="verFile" accept=".json,application/json" hidden>
-          <p class="hint" style="margin:0">Las versiones se guardan en este navegador. Exporta un respaldo para llevarlas a otro equipo o para no perderlas si borras los datos de navegación.</p>
-        </div>
       </div>
     </details>
 
@@ -227,10 +209,19 @@ main{overflow:auto;padding:24px;display:flex}
     <div class="board"><svg id="plan" xmlns="http://www.w3.org/2000/svg"></svg></div>
   </main>
 </div>
-<div class="floorbar" id="floorbar" role="group" aria-label="Pisos">
-  <div class="fseg">
-    <button type="button" data-piso="0">Piso 1</button>
-    <button type="button" data-piso="1">Piso 2</button>
+<div class="floorbar" id="floorbar" role="group" aria-label="Herramientas y pisos">
+  <div class="frow">
+    <div class="ftools" id="toolbar" role="group" aria-label="Herramientas">
+      <button type="button" data-tool="1" title="Pared (1)" aria-label="Pared"><svg width="20" height="20" viewBox="0 0 18 18"><line x1="2" y1="9" x2="16" y2="9" stroke="currentColor" stroke-width="4"/></svg></button>
+      <button type="button" data-tool="2" title="Puerta (2) — clic sobre una puerta para rotarla" aria-label="Puerta"><svg width="20" height="20" viewBox="0 0 18 18"><path d="M3 3 L3 15 M15 3 A12 12 0 0 1 3 15" fill="none" stroke="var(--door)" stroke-width="1.8"/></svg></button>
+      <button type="button" data-tool="3" title="Ventana (3)" aria-label="Ventana"><svg width="20" height="20" viewBox="0 0 18 18"><rect x="2" y="7" width="14" height="4" fill="none" stroke="var(--window)" stroke-width="1.6"/><line x1="2" y1="9" x2="16" y2="9" stroke="var(--window)" stroke-width="1"/></svg></button>
+      <button type="button" data-tool="0" title="Borrar (4)" aria-label="Borrar"><svg width="20" height="20" viewBox="0 0 18 18"><path d="M4 4 L14 14 M14 4 L4 14" stroke="currentColor" stroke-width="2"/></svg></button>
+    </div>
+    <span class="fsep" aria-hidden="true"></span>
+    <div class="fseg">
+      <button type="button" data-piso="0">Piso 1</button>
+      <button type="button" data-piso="1">Piso 2</button>
+    </div>
   </div>
   <label class="fop" id="fop" hidden>Planta baja<input type="range" id="underOp" min="0" max="100" step="5"><span class="val" id="underVal"></span></label>
 </div>
@@ -506,12 +497,10 @@ main{overflow:auto;padding:24px;display:flex}
     loadSlot(n, true);
     try { localStorage.setItem(ACTIVE_KEY, String(n)); } catch(_){}
     hover = null;
-    currentVer = null;
     syncInputs();
     render();
     renderSlots();
     renderFloorUI();
-    renderVersions();
   }
 
   function slotSummary(d){
@@ -1027,10 +1016,24 @@ main{overflow:auto;padding:24px;display:flex}
   svg.addEventListener('pointerleave', () => { if (!drag){ hover = null; render(); } });
 
   // ---- Herramientas ----
+  function renderToolUI(){
+    document.querySelectorAll('#toolbar [data-tool]').forEach(b => {
+      const on = tool !== 'f' && +b.dataset.tool === tool;
+      b.classList.toggle('sel', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+  }
   function selectEdgeTool(v){
     tool = v;
+    const r = $({ 1:'t1', 2:'t2', 3:'t3', 0:'t0' }[v]);
+    if (r) r.checked = true;
     document.querySelectorAll('#palette button').forEach(b => b.classList.remove('sel'));
+    renderToolUI();
   }
+  $('toolbar').addEventListener('click', e => {
+    const b = e.target.closest('[data-tool]');
+    if (b) selectEdgeTool(+b.dataset.tool);
+  });
   document.querySelectorAll('input[name=tool]').forEach(r =>
     r.addEventListener('change', () => selectEdgeTool(+r.value)));
 
@@ -1038,6 +1041,7 @@ main{overflow:auto;padding:24px;display:flex}
     tool = 'f'; furnSel = k;
     document.querySelectorAll('input[name=tool]').forEach(r => { r.checked = false; });
     document.querySelectorAll('#palette button').forEach(b => b.classList.toggle('sel', b.dataset.k === k));
+    renderToolUI();
   }
   $('palette').innerHTML = FURN.map(f =>
     `<button type="button" data-k="${f.k}" title="${f.n}"><svg viewBox="0 0 100 100" aria-hidden="true"><g class="fu">${f.d}</g></svg>${f.n}</button>`
@@ -1249,261 +1253,6 @@ main{overflow:auto;padding:24px;display:flex}
     });
   }
 
-  // ---- Historial de versiones local (IndexedDB) ----
-  // Cada versión: { id, nombre, creado, actualizado?, filas, columnas, codigo }
-  // "codigo" usa el mismo formato que «Compartir por código».
-  const IDB_NAME = 'plano-grilla';
-  const IDB_STORE = 'versiones';
-  let idb = null;
-  let versions = [];
-  let currentVer = null;
-  const channel = ('BroadcastChannel' in window) ? new BroadcastChannel('plano-grilla') : null;
-
-  function idbOpen(){
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(IDB_NAME, 1);
-      req.onupgradeneeded = () => {
-        const d = req.result;
-        if (!d.objectStoreNames.contains(IDB_STORE)){
-          const store = d.createObjectStore(IDB_STORE, { keyPath:'id' });
-          store.createIndex('creado', 'creado');
-        }
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-      req.onblocked = () => reject(new Error('blocked'));
-    });
-  }
-  function idbTx(mode, fn){
-    return new Promise((resolve, reject) => {
-      const t = idb.transaction(IDB_STORE, mode);
-      const store = t.objectStore(IDB_STORE);
-      let result;
-      const req = fn(store);
-      if (req) req.onsuccess = () => { result = req.result; };
-      t.oncomplete = () => resolve(result);
-      t.onerror = () => reject(t.error);
-      t.onabort = () => reject(t.error);
-    });
-  }
-  const vGetAll = () => idbTx('readonly', s => s.getAll());
-  const vPut = v => idbTx('readwrite', s => s.put(v));
-  const vDelete = id => idbTx('readwrite', s => s.delete(id));
-  const vPutMany = list => idbTx('readwrite', s => { list.forEach(v => s.put(v)); return null; });
-
-  function newId(){
-    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-  }
-
-  async function refreshVersions(){
-    try {
-      versions = (await vGetAll()).sort((a, b) => (b.creado || 0) - (a.creado || 0));
-      if (currentVer && !versions.some(v => v.id === currentVer)) currentVer = null;
-      renderVersions();
-    } catch(e){ verMsg('No se pudo leer el historial.', 'err'); }
-  }
-  // Avisa a otras pestañas abiertas para que actualicen su lista
-  function notifyChange(){
-    if (channel) try { channel.postMessage('changed'); } catch(_){}
-  }
-  if (channel) channel.onmessage = () => refreshVersions();
-
-  // Pide al navegador que no borre estos datos ante falta de espacio (si lo permite)
-  let persistAsked = false;
-  function askPersist(){
-    if (persistAsked) return;
-    persistAsked = true;
-    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch(_){}
-  }
-
-  function verMsg(text, kind){
-    const el = $('verMsg');
-    el.textContent = text;
-    el.className = 'msg ' + (kind || '');
-  }
-  function idbErrorText(e){
-    if (e && e.name === 'QuotaExceededError') return 'El navegador no tiene más espacio disponible. Elimina versiones antiguas o exporta un respaldo.';
-    return 'No se pudo completar la operación en el historial.';
-  }
-  function fmtDate(ms){
-    try { return new Date(ms).toLocaleString('es-AR', { dateStyle:'short', timeStyle:'short' }); }
-    catch(_){ return ''; }
-  }
-
-  function renderVersions(){
-    const list = $('verList');
-    list.textContent = '';
-    const badge = $('verCount');
-    badge.hidden = versions.length === 0;
-    badge.textContent = versions.length;
-    if (!versions.length){
-      const li = document.createElement('li');
-      li.className = 'empty';
-      li.textContent = 'Todavía no hay versiones guardadas.';
-      list.appendChild(li);
-      return;
-    }
-    for (const v of versions){
-      const li = document.createElement('li');
-      if (v.id === currentVer) li.classList.add('cur');
-      const name = document.createElement('div');
-      name.className = 'vname';
-      name.textContent = typeof v.nombre === 'string' && v.nombre ? v.nombre : 'Sin nombre';
-      const meta = document.createElement('div');
-      meta.className = 'vmeta';
-      const upd = v.actualizado ? ` · actualizada ${fmtDate(v.actualizado)}` : '';
-      meta.textContent = `${v.filas || '?'}×${v.columnas || '?'} · ${fmtDate(v.creado)}${upd}${v.id === currentVer ? ' · en uso' : ''}`;
-      const act = document.createElement('div');
-      act.className = 'vact';
-
-      const bLoad = document.createElement('button');
-      bLoad.textContent = 'Cargar';
-      bLoad.addEventListener('click', () => loadVersion(v));
-
-      const bUpd = document.createElement('button');
-      confirmClick(bUpd, 'Sobrescribir', '¿Reemplazar?', () => overwriteVersion(v));
-      bUpd.title = 'Reemplaza esta versión por el plano actual';
-
-      const bDel = document.createElement('button');
-      confirmClick(bDel, 'Eliminar', 'Confirmar', () => deleteVersion(v));
-
-      act.append(bLoad, bUpd, bDel);
-      li.append(name, meta, act);
-      list.appendChild(li);
-    }
-  }
-
-  function loadVersion(v){
-    let d;
-    try { d = decode(String(v.codigo || '')); }
-    catch(e){ verMsg('Esta versión está dañada y no se puede cargar.', 'err'); return; }
-    snapshot();
-    applyPlan(d);
-    syncInputs();
-    hover = null;
-    currentVer = v.id;
-    render(); save(); renderVersions();
-    verMsg(`Versión «${v.nombre || 'Sin nombre'}» cargada. «Deshacer» vuelve al plano anterior.`, 'ok');
-  }
-
-  async function overwriteVersion(v){
-    try {
-      await vPut(Object.assign({}, v, { codigo: encode(), filas: st.rows, columnas: st.cols, actualizado: Date.now() }));
-      currentVer = v.id;
-      await refreshVersions(); notifyChange();
-      verMsg(`Versión «${v.nombre || 'Sin nombre'}» actualizada con el plano actual.`, 'ok');
-    } catch(e){ verMsg(idbErrorText(e), 'err'); }
-  }
-
-  async function deleteVersion(v){
-    try {
-      await vDelete(v.id);
-      if (currentVer === v.id) currentVer = null;
-      await refreshVersions(); notifyChange();
-      verMsg(`Versión «${v.nombre || 'Sin nombre'}» eliminada.`, 'ok');
-    } catch(e){ verMsg(idbErrorText(e), 'err'); }
-  }
-
-  $('verSave').addEventListener('click', async () => {
-    if (!idb) return;
-    const btn = $('verSave');
-    const nombre = ($('verName').value.trim().replace(/\s+/g, ' ') || `Versión del ${fmtDate(Date.now())}`).slice(0, 60);
-    btn.disabled = true;
-    try {
-      const v = { id: newId(), nombre, creado: Date.now(), filas: st.rows, columnas: st.cols, codigo: encode() };
-      await vPut(v);
-      askPersist();
-      currentVer = v.id;
-      $('verName').value = '';
-      await refreshVersions(); notifyChange();
-      verMsg(`Versión «${nombre}» guardada.`, 'ok');
-    } catch(e){ verMsg(idbErrorText(e), 'err'); }
-    finally { btn.disabled = false; }
-  });
-  $('verName').addEventListener('keydown', e => { if (e.key === 'Enter') $('verSave').click(); });
-
-  // ---- Respaldo: exportar e importar todas las versiones en un archivo JSON ----
-  $('verExport').addEventListener('click', () => {
-    if (!versions.length){ verMsg('No hay versiones para exportar.', 'err'); return; }
-    const data = { app:'plano-grilla', formato:1, exportado: Date.now(), versiones: versions };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const d = new Date();
-    const pad = n => String(n).padStart(2, '0');
-    a.href = url;
-    a.download = `planos-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    verMsg(versions.length === 1 ? 'Respaldo exportado con 1 versión.' : `Respaldo exportado con ${versions.length} versiones.`, 'ok');
-  });
-
-  $('verImport').addEventListener('click', () => $('verFile').click());
-  $('verFile').addEventListener('change', async e => {
-    const file = e.target.files && e.target.files[0];
-    e.target.value = '';
-    if (!file || !idb) return;
-    let data;
-    try { data = JSON.parse(await file.text()); }
-    catch(_){ verMsg('El archivo no es un respaldo válido.', 'err'); return; }
-    if (!data || data.app !== 'plano-grilla' || !Array.isArray(data.versiones)){
-      verMsg('El archivo no es un respaldo de este editor de planos.', 'err'); return;
-    }
-    const ok = [];
-    let bad = 0;
-    for (const v of data.versiones){
-      try {
-        const d = decode(String(v.codigo || ''));
-        ok.push({
-          id: typeof v.id === 'string' && v.id ? v.id.slice(0, 64) : newId(),
-          nombre: (typeof v.nombre === 'string' && v.nombre ? v.nombre : 'Sin nombre').slice(0, 60),
-          creado: Number(v.creado) || Date.now(),
-          actualizado: Number(v.actualizado) || undefined,
-          filas: d.rows, columnas: d.cols,
-          codigo: String(v.codigo)
-        });
-      } catch(_){ bad++; }
-    }
-    if (!ok.length){ verMsg('El respaldo no contiene versiones válidas.', 'err'); return; }
-    try {
-      const existing = new Set(versions.map(v => v.id));
-      const replaced = ok.filter(v => existing.has(v.id)).length;
-      await vPutMany(ok);
-      askPersist();
-      await refreshVersions(); notifyChange();
-      let txt = ok.length === 1 ? 'Se importó 1 versión' : `Se importaron ${ok.length} versiones`;
-      if (replaced) txt += replaced === 1 ? ' (1 ya existía y se actualizó)' : ` (${replaced} ya existían y se actualizaron)`;
-      if (bad) txt += bad === 1 ? '; 1 estaba dañada y se omitió' : `; ${bad} estaban dañadas y se omitieron`;
-      verMsg(txt + '.', bad ? 'err' : 'ok');
-    } catch(err){ verMsg(idbErrorText(err), 'err'); }
-  });
-
-  (async function initHistory(){
-    renderVersions();
-    if (!('indexedDB' in window)){
-      verMsg('Este navegador no permite guardar versiones localmente.', 'err');
-      $('verSave').disabled = true; $('verImport').disabled = true;
-      return;
-    }
-    try {
-      idb = await idbOpen();
-      for (const b of pendingBackups){
-        try {
-          await vPut({ id: newId(), nombre: b.nombre.slice(0, 60), creado: Date.now(),
-                       filas: b.data.rows, columnas: b.data.cols, codigo: encode(b.data) });
-        } catch(_){}
-      }
-      if (pendingBackups.length){ askPersist(); pendingBackups.length = 0; }
-      await refreshVersions();
-    } catch(e){
-      verMsg('No se pudo abrir el historial local (puede ocurrir en modo incógnito).', 'err');
-      $('verSave').disabled = true; $('verImport').disabled = true;
-    }
-  })();
-
   // ---- Atajos de teclado ----
   document.addEventListener('keydown', e => {
     const tg = e.target.tagName;
@@ -1520,6 +1269,7 @@ main{overflow:auto;padding:24px;display:flex}
   render();
   renderSlots();
   renderFloorUI();
+  renderToolUI();
 })();
 </script>
 </body>
