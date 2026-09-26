@@ -11,7 +11,7 @@
 :root{
   --paper:#171C21; --sheet:#20272E; --grid:#303A43; --grid-strong:#44505A;
   --ink:#E6EBEE; --muted:#9AA6AD; --door:#52B7A0; --window:#76A5DE; --hover:#F0B43C;
-  --panel:#1C2228; --border:#39444D; --room:#0f1319; --furn:#CDB999; --furn-bg:#29313A;
+  --panel:#1C2228; --border:#39444D; --room:#0f1319; --reja:#AEB6BD; --furn:#CDB999; --furn-bg:#29313A;
   color-scheme:dark;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
@@ -98,6 +98,7 @@ main{overflow:auto;padding:24px;display:flex}
 #plan .jamb{stroke:var(--ink);stroke-linecap:butt}
 #plan .win{stroke:var(--window);fill:var(--sheet)}
 #plan .win-l{stroke:var(--window)}
+#plan .reja{stroke:var(--reja);fill:none;stroke-linecap:butt}
 #plan .hov{stroke:var(--hover);stroke-linecap:round;opacity:.85}
 #plan .hovc{fill:var(--hover);opacity:.18}
 #plan .lbl{fill:var(--muted);font-size:10px;font-family:inherit}
@@ -134,6 +135,16 @@ main{overflow:auto;padding:24px;display:flex}
 .fop[hidden]{display:none}
 .fop input{width:96px;accent-color:var(--hover)}
 .fop .val{min-width:3.2em;text-align:right;color:var(--ink)}
+.f3d{height:34px;padding:0 10px;font-weight:700}
+.v3d{position:fixed;inset:0;z-index:60;background:#11161c;-webkit-user-select:none;user-select:none}
+.v3d[hidden]{display:none}
+#v3dCanvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.v3dbar{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 12px}
+.v3dbar .spacer{flex:1}
+.v3dbar [hidden]{display:none}
+.v3dhelp{position:absolute;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));margin:0;font-size:.8rem;color:var(--muted);background:rgba(17,22,28,.8);padding:6px 10px;border-radius:6px}
+.v3dmsg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);margin:0;color:var(--ink);background:rgba(17,22,28,.88);padding:10px 16px;border-radius:8px;border:1px solid var(--border);pointer-events:none}
+.v3dmsg:empty{display:none}
 #tip{position:fixed;z-index:10;pointer-events:none;background:var(--ink);color:var(--sheet);font-size:.82rem;font-weight:600;padding:4px 8px;border-radius:4px;white-space:nowrap;display:none}
 @media (max-width:760px){
   .app{grid-template-columns:1fr}
@@ -224,6 +235,7 @@ main{overflow:auto;padding:24px;display:flex}
       <button type="button" data-tool="1" title="Pared (1)" aria-label="Pared"><svg width="20" height="20" viewBox="0 0 18 18"><line x1="2" y1="9" x2="16" y2="9" stroke="currentColor" stroke-width="4"/></svg></button>
       <button type="button" data-tool="2" title="Puerta (2) — clic sobre una puerta para rotarla" aria-label="Puerta"><svg width="20" height="20" viewBox="0 0 18 18"><path d="M3 3 L3 15 M15 3 A12 12 0 0 1 3 15" fill="none" stroke="var(--door)" stroke-width="1.8"/></svg></button>
       <button type="button" data-tool="3" title="Ventana (3)" aria-label="Ventana"><svg width="20" height="20" viewBox="0 0 18 18"><rect x="2" y="7" width="14" height="4" fill="none" stroke="var(--window)" stroke-width="1.6"/><line x1="2" y1="9" x2="16" y2="9" stroke="var(--window)" stroke-width="1"/></svg></button>
+      <button type="button" data-tool="7" title="Reja (6)" aria-label="Reja"><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="var(--reja)" stroke-width="1.4"><path d="M1.5 4 H16.5 M1.5 14 H16.5 M4 4 V14 M7.5 4 V14 M11 4 V14 M14.5 4 V14"/></svg></button>
       <button type="button" data-tool="mv" title="Mover (5)" aria-label="Mover"><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1.5 V16.5 M1.5 9 H16.5 M9 1.5 L6.8 3.7 M9 1.5 L11.2 3.7 M9 16.5 L6.8 14.3 M9 16.5 L11.2 14.3 M1.5 9 L3.7 6.8 M1.5 9 L3.7 11.2 M16.5 9 L14.3 6.8 M16.5 9 L14.3 11.2"/></svg></button>
       <button type="button" data-tool="0" title="Borrar (4)" aria-label="Borrar"><svg width="20" height="20" viewBox="0 0 18 18"><path d="M4 4 L14 14 M14 4 L4 14" stroke="currentColor" stroke-width="2"/></svg></button>
     </div>
@@ -232,10 +244,26 @@ main{overflow:auto;padding:24px;display:flex}
       <button type="button" data-piso="0">Piso 1</button>
       <button type="button" data-piso="1">Piso 2</button>
     </div>
+    <button type="button" class="f3d" id="open3d" title="Ver el plano en 3D" aria-label="Vista 3D">3D</button>
     <button type="button" class="fhelpbtn" id="helpToggle" title="Mostrar u ocultar la ayuda" aria-label="Ayuda" aria-pressed="true">?</button>
   </div>
   <p class="fhelp" id="toolHelp" role="status"></p>
   <label class="fop" id="fop" hidden>Planta baja<input type="range" id="underOp" min="0" max="100" step="5"><span class="val" id="underVal"></span></label>
+</div>
+<div class="v3d" id="v3d" hidden>
+  <canvas id="v3dCanvas"></canvas>
+  <div class="v3dbar">
+    <strong>Vista 3D</strong>
+    <label class="check"><input type="checkbox" id="v3dFurn" checked>Muebles</label>
+    <label class="check"><input type="checkbox" id="v3dLow">Paredes bajas</label>
+    <label class="check" id="v3dP2wrap"><input type="checkbox" id="v3dP2" checked>Piso 2</label>
+    <span class="spacer"></span>
+    <button type="button" id="v3dVR" hidden>Entrar en VR</button>
+    <button type="button" id="v3dReset">Vista inicial</button>
+    <button type="button" id="v3dClose" class="primary">Cerrar</button>
+  </div>
+  <p class="v3dhelp">Arrastra para girar · Rueda o pellizco para acercar · Clic derecho o Shift + arrastrar para desplazar · Esc para cerrar</p>
+  <p class="v3dmsg" id="v3dMsg" role="status"></p>
 </div>
 <div id="tip" aria-hidden="true"></div>
 
@@ -246,7 +274,7 @@ main{overflow:auto;padding:24px;display:flex}
   const svg = document.getElementById('plan');
   const tip = document.getElementById('tip');
   const $ = id => document.getElementById(id);
-  const TOOL_NAMES = { 0:'Borrando', 1:'Pared', 2:'Puerta', 3:'Ventana' };
+  const TOOL_NAMES = { 0:'Borrando', 1:'Pared', 2:'Puerta', 3:'Ventana', 7:'Reja' };
 
   // Íconos de muebles dibujados en un espacio de 100×100. La clave es una letra (se usa en el código compartido).
   const FURN = [
@@ -637,20 +665,89 @@ main{overflow:auto;padding:24px;display:flex}
     return (i >= 0 && i < st.rows && j >= 0 && j < st.cols) ? { t:'c', i, j } : null;
   }
 
-  function edgeCoords(t, i, j){
-    const S = st.cell;
+  function edgeCoords(t, i, j, n){
+    const S = st.cell, L = S * (n || 1);
     const x1 = PAD + j * S, y1 = PAD + i * S;
-    return t === 'h' ? [x1, y1, x1 + S, y1] : [x1, y1, x1, y1 + S];
+    return t === 'h' ? [x1, y1, x1 + L, y1] : [x1, y1, x1, y1 + L];
   }
 
   const DOOR_CYCLE = [2, 5, 4, 6];
   const isDoor = v => v === 2 || v === 4 || v === 5 || v === 6;
-  function drawEdge(t, i, j, val){
+  // Una puerta ocupa bordes consecutivos con la misma orientación; se dibuja como una sola hoja
+  function edgesSVG(hh, vv){
+    let walls = '', others = '';
+    for (let i = 0; i <= st.rows; i++) for (let j = 0; j < st.cols; j++){
+      const x = hh[i][j]; if (!x) continue;
+      if (x === 1) walls += drawEdge('h', i, j, 1);
+      else if (isDoor(x)){
+        if (j > 0 && hh[i][j - 1] === x) continue;
+        let n = 1; while (j + n < st.cols && hh[i][j + n] === x) n++;
+        others += drawEdge('h', i, j, x, n);
+      } else others += drawEdge('h', i, j, x);
+    }
+    for (let i = 0; i < st.rows; i++) for (let j = 0; j <= st.cols; j++){
+      const x = vv[i][j]; if (!x) continue;
+      if (x === 1) walls += drawEdge('v', i, j, 1);
+      else if (isDoor(x)){
+        if (i > 0 && vv[i - 1][j] === x) continue;
+        let n = 1; while (i + n < st.rows && vv[i + n][j] === x) n++;
+        others += drawEdge('v', i, j, x, n);
+      } else others += drawEdge('v', i, j, x);
+    }
+    return { walls, others };
+  }
+  // Tramo de puerta que contiene al borde e: { t, i, j (inicio), n (bordes), val }
+  function doorSpanAt(e){
+    const val = getE(e);
+    const at = k => e.t === 'h' ? st.h[e.i][k] : (st.v[k] ? st.v[k][e.j] : undefined);
+    let a = e.t === 'h' ? e.j : e.i, b = a;
+    while (at(a - 1) === val) a--;
+    while (at(b + 1) === val) b++;
+    return e.t === 'h' ? { t:'h', i:e.i, j:a, n:b - a + 1, val } : { t:'v', i:a, j:e.j, n:b - a + 1, val };
+  }
+  const spanEdges = sp => Array.from({ length:sp.n }, (_, k) => sp.t === 'h' ? { t:'h', i:sp.i, j:sp.j + k } : { t:'v', i:sp.i + k, j:sp.j });
+  // Qué haría un clic con la herramienta Puerta sobre el borde e
+  function doorTarget(ev, e){
+    const cur = getE(e);
+    const len = e.t === 'h' ? st.cols : st.rows;
+    const along = e.t === 'h' ? e.j : e.i;
+    const { fx, fy } = toGrid(ev);
+    const frac = (e.t === 'h' ? fx : fy) - along;
+    if (isDoor(cur)){
+      const sp = doorSpanAt(e);
+      if (sp.n === 1){
+        // Puerta antigua de 50 cm: se amplía hacia el lado más cercano al cursor
+        const k = frac < 0.5 ? along - 1 : along + 1;
+        const nb = e.t === 'h' ? { t:'h', i:e.i, j:k } : { t:'v', i:k, j:e.j };
+        if (k >= 0 && k < len && (getE(nb) === 0 || getE(nb) === 1)){
+          const start = Math.min(k, along);
+          return { action:'widen', span: e.t === 'h' ? { t:'h', i:e.i, j:start, n:2, val:cur } : { t:'v', i:start, j:e.j, n:2, val:cur } };
+        }
+      }
+      return { action:'rotate', span:sp };
+    }
+    // Puerta nueva de 1 m, centrada en el vértice más cercano
+    let k1 = Math.round(along + frac) - 1;
+    k1 = Math.max(0, Math.min(len - 2, k1));
+    return { action:'place', span: e.t === 'h' ? { t:'h', i:e.i, j:k1, n:2, val:2 } : { t:'v', i:k1, j:e.j, n:2, val:2 } };
+  }
+
+  function drawEdge(t, i, j, val, n){
     const S = st.cell;
-    const [x1, y1, x2, y2] = edgeCoords(t, i, j);
+    const [x1, y1, x2, y2] = edgeCoords(t, i, j, n);
     const wallW = Math.max(3, S * 0.12);
     if (val === 1){
       return `<line class="wall" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${wallW}"/>`;
+    }
+    if (val === 7){
+      const tk = Math.max(3, S * 0.1), nb = 4;
+      let d = `M${x1} ${y1} L${x2} ${y2}`;
+      for (let b = 0; b < nb; b++){
+        const f = (b + 0.5) / nb;
+        if (t === 'h'){ const x = x1 + S * f; d += ` M${x} ${y1 - tk} V${y1 + tk}`; }
+        else { const y = y1 + S * f; d += ` M${x1 - tk} ${y} H${x1 + tk}`; }
+      }
+      return `<path class="reja" d="${d}" stroke-width="1.6"/>`;
     }
     if (val === 3){
       const th = wallW;
@@ -660,7 +757,7 @@ main{overflow:auto;padding:24px;display:flex}
       return r + `<line class="win-l" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="1"/>`;
     }
     if (isDoor(val)){
-      const r = S * 0.9;
+      const r = S * (n || 1) * 0.9;
       let dir = t === 'h' ? (i === st.rows ? -1 : 1) : (j === st.cols ? -1 : 1);
       if (val === 4 || val === 6) dir = -dir;                 // abre hacia el otro lado
       const hingeEnd = val === 5 || val === 6;                // bisagra en el otro extremo
@@ -893,14 +990,7 @@ main{overflow:auto;padding:24px;display:flex}
       let uf = '', uo = '', uw = '';
       for (let i = 0; i < st.rows; i++) for (let j = 0; j < st.cols; j++)
         if (p.f[i] && p.f[i][j]) uf += drawFurn(i, j, p.f[i][j]);
-      for (let i = 0; i <= st.rows; i++) for (let j = 0; j < st.cols; j++){
-        const x = p.h[i][j]; if (!x) continue;
-        if (x === 1) uw += drawEdge('h', i, j, 1); else uo += drawEdge('h', i, j, x);
-      }
-      for (let i = 0; i < st.rows; i++) for (let j = 0; j <= st.cols; j++){
-        const x = p.v[i][j]; if (!x) continue;
-        if (x === 1) uw += drawEdge('v', i, j, 1); else uo += drawEdge('v', i, j, x);
-      }
+      const ue = edgesSVG(p.h, p.v); uw = ue.walls; uo = ue.others;
       g += `<g class="under" opacity="${(st.underOp == null ? 35 : st.underOp) / 100}" pointer-events="none">${uf}${uo}${uw}</g>`;
     }
 
@@ -909,16 +999,8 @@ main{overflow:auto;padding:24px;display:flex}
       if (st.f[i][j] && !(drag && drag.mode === 'mv' && drag.cells.some(c => c.i === i && c.j === j))) g += drawFurn(i, j, st.f[i][j]);
 
     // Aberturas primero, paredes encima
-    let walls = '', others = '';
-    for (let i = 0; i <= st.rows; i++) for (let j = 0; j < st.cols; j++){
-      const v = st.h[i][j]; if (!v) continue;
-      if (v === 1) walls += drawEdge('h', i, j, 1); else others += drawEdge('h', i, j, v);
-    }
-    for (let i = 0; i < st.rows; i++) for (let j = 0; j <= st.cols; j++){
-      const v = st.v[i][j]; if (!v) continue;
-      if (v === 1) walls += drawEdge('v', i, j, 1); else others += drawEdge('v', i, j, v);
-    }
-    g += others + walls;
+    const es = edgesSVG(st.h, st.v);
+    g += es.others + es.walls;
 
     if (st.showDims) g += drawDims();
     roomMeta = [];
@@ -933,7 +1015,8 @@ main{overflow:auto;padding:24px;display:flex}
         if (tool === 'f' && !drag) g += drawFurn(hover.i, hover.j, { k:furnSel, o:rot }, 'ghost');
         else g += `<rect class="hovc" x="${PAD + hover.j * S}" y="${PAD + hover.i * S}" width="${S}" height="${S}"/>`;
       } else {
-        const [x1, y1, x2, y2] = edgeCoords(hover.t, hover.i, hover.j);
+        const sp = hover.span;
+        const [x1, y1, x2, y2] = sp ? edgeCoords(sp.t, sp.i, sp.j, sp.n) : edgeCoords(hover.t, hover.i, hover.j);
         g += `<line class="hov" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${Math.max(4, S * 0.16)}"/>`;
       }
     }
@@ -944,15 +1027,24 @@ main{overflow:auto;padding:24px;display:flex}
   function fmt(n){ return (Math.round(n * 100) / 100).toLocaleString('es-AR'); }
   function updateStats(){
     let w = 0, d = 0, win = 0, fu = 0;
-    const count = arr => arr.forEach(r => r.forEach(v => { if (v === 1) w++; else if (isDoor(v)) d++; else if (v === 3) win++; }));
-    count(st.h); count(st.v);
+    let rj = 0;
+    st.h.forEach((r, i) => r.forEach((v, j) => {
+      if (v === 7) rj++;
+      if (v === 1) w++; else if (v === 3) win++;
+      else if (isDoor(v) && !(j > 0 && r[j - 1] === v)) d++;
+    }));
+    st.v.forEach((r, i) => r.forEach((v, j) => {
+      if (v === 7) rj++;
+      if (v === 1) w++; else if (v === 3) win++;
+      else if (isDoor(v) && !(i > 0 && st.v[i - 1][j] === v)) d++;
+    }));
     st.f.forEach(r => r.forEach(x => { if (x) fu++; }));
     const m = st.meters;
     $('stats').innerHTML =
       `<span>Editando: <strong>Piso ${st.piso + 1}</strong>${st.piso === 1 ? ' (planta alta)' : ' (planta baja)'}</span>` +
       `<span>Superficie total: <strong>${fmt(st.cols * m)} × ${fmt(st.rows * m)} m</strong> (${fmt(st.cols * st.rows * m * m)} m²)</span>` +
       `<span>Ambientes cerrados: <strong>${lastRooms.length}</strong></span>` +
-      `<span>Paredes: <strong>${fmt(w * m)} m</strong></span>` +
+      `<span>Paredes: <strong>${fmt(w * m)} m</strong>${rj ? ` · Rejas: <strong>${fmt(rj * m)} m</strong>` : ''}</span>` +
       `<span>Puertas: <strong>${d}</strong> · Ventanas: <strong>${win}</strong> · Muebles: <strong>${fu}</strong></span>`;
   }
 
@@ -1031,11 +1123,16 @@ main{overflow:auto;padding:24px;display:flex}
       if (e){
         snapshot();
         const cur = getE(e);
-        if (tool === 2 && isDoor(cur)){
-          // Rotar: bisagra y sentido de apertura en 4 variantes
-          setE(e, DOOR_CYCLE[(DOOR_CYCLE.indexOf(cur) + 1) % DOOR_CYCLE.length]);
+        if (tool === 2 || (tool === 0 && isDoor(cur))){
+          if (tool === 0){
+            for (const x of spanEdges(doorSpanAt(e))) setE(x, 0);
+          } else {
+            const dt = doorTarget(ev, e);
+            const val = dt.action === 'rotate' ? DOOR_CYCLE[(DOOR_CYCLE.indexOf(dt.span.val) + 1) % DOOR_CYCLE.length] : dt.span.val;
+            for (const x of spanEdges(dt.span)) setE(x, val);
+          }
           ev.preventDefault();
-          hover = e;
+          hover = null;
           render(); save();
           return;
         }
@@ -1094,9 +1191,14 @@ main{overflow:auto;padding:24px;display:flex}
       }
     } else {
       h = (tool === 'f' || tool === 'mv') ? hitCell(ev) : (hitEdge(ev) || (tool === 0 ? hitCell(ev) : null));
+      if (h && h.t !== 'c'){
+        if (tool === 2) h.span = doorTarget(ev, h).span;
+        else if (tool === 0 && isDoor(getE(h))) h.span = doorSpanAt(h);
+      }
       if (h && tool === 'mv' && !st.f[h.i][h.j]) h = null;
     }
-    const changed = (hover ? keyE(hover) : '') !== (h ? keyE(h) : '');
+    const spanKey = x => x ? keyE(x) + (x.span ? '|' + keyE(x.span) + ':' + x.span.n : '') : '';
+    const changed = spanKey(hover) !== spanKey(h);
     hover = h;
     if (changed || drag) render();
   });
@@ -1119,8 +1221,9 @@ main{overflow:auto;padding:24px;display:flex}
   // ---- Herramientas ----
   const TOOL_HELP = {
     '1': '<strong>Pared:</strong> clic cerca del borde de un cuadro para poner o quitar una pared. Mantén presionado y arrastra para trazar una línea recta.',
-    '2': '<strong>Puerta:</strong> clic en un borde para colocarla. Clic sobre una puerta existente para rotarla (bisagra y sentido de apertura).',
+    '2': '<strong>Puerta:</strong> clic en un borde para colocar una puerta de 1 m, centrada en el vértice más cercano. Clic sobre una puerta existente para rotarla (bisagra y sentido de apertura); si es una puerta antigua de 50 cm, el primer clic la amplía a 1 m.',
     '3': '<strong>Ventana:</strong> clic en un borde para colocarla. Arrastra para hacer una ventana corrida.',
+    '7': '<strong>Reja:</strong> se traza igual que una pared (clic o arrastrando en línea recta). Cierra el ambiente pero deja ver a través; en 3D se ve con barrotes negros de 1,8 m (1 m en el piso 2, como baranda).',
     '0': '<strong>Borrar:</strong> cerca de un borde borra paredes, puertas y ventanas; en el centro de un cuadro borra el mueble.',
     'mv': '<strong>Mover:</strong> arrastra un mueble para moverlo solo. Con <strong>Shift</strong> presionado arrastras todo el grupo de muebles que se tocan (por ejemplo, una mesa con sus sillas). Esc cancela.',
     'f': '<strong>Mueble:</strong> clic en un cuadro para colocarlo; arrastra para repetirlo. <strong>R</strong> cambia la orientación. Clic sobre el mismo mueble lo quita.'
@@ -1278,7 +1381,7 @@ main{overflow:auto;padding:24px;display:flex}
   }
 
   function parseFloor(r, c, hs, vs, fs, ns, label){
-    if (!/^[0-6]*$/.test(hs + vs)) throw new Error(`El código contiene caracteres no válidos${label}.`);
+    if (!/^[0-7]*$/.test(hs + vs)) throw new Error(`El código contiene caracteres no válidos${label}.`);
     if (hs.length !== (r + 1) * c || vs.length !== r * (c + 1)) throw new Error(`El código está incompleto o fue modificado${label}.`);
     const g = makeGrid(r, c);
     for (let i = 0; i <= r; i++) g.h[i] = Array.from(hs.substr(i * c, c), Number);
@@ -1384,8 +1487,481 @@ main{overflow:auto;padding:24px;display:flex}
     });
   }
 
+  // ---- Vista 3D ----
+  // Se construye a partir del plano: 1 cuadro = st.meters metros. Eje X = columnas, eje Z = filas (norte arriba), Y = altura.
+  const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+  const H3 = { wall:2.6, door:2.05, sill:0.9, lintel:2.05, floor:2.8, thick:0.15, fence:1.8 };
+  const COL3 = { wall:'#e9e5dd', fence:'#77796f', floor:'#7a6450', slab:'#9a958e', grass:'#2c4630', curb:'#c4c1b8',
+                 glass:'#9ec9e8', water:'#2f7fb8' };
+  // Volúmenes de cada mueble: [x0, y0, x1, y1] en el espacio 0..100 del cuadro (giro 0), altura desde y hasta, color
+  const FURN3D = {
+    a:[[0,0,100,100,0,.55,'#d9d2c3']],
+    b:[[4,24,96,80,0,.45,'#6f7c8a'],[4,24,96,40,0,.85,'#5d6875']],
+    d:[[0,0,100,100,0,.9,'#3a3d42']],
+    e:[[8,4,92,96,0,1.8,'#d7dbe0']],
+    f:[[0,0,100,100,0,.9,'#cfcac1']],
+    g:[[10,15,90,85,0,.85,'#e6e6e6']],
+    h:[[26,8,74,90,0,.42,'#f2f2f2']],
+    i:[[0,0,100,100,0,.05,'#dfe6ea']],
+    j:[[6,18,94,82,0,.55,'#f2f2f2']],
+    k:[[0,0,100,100,0,2.2,'#a58a6c']],
+    l:[[6,12,94,60,.72,.76,'#8b6b4a'],[10,16,18,56,0,.72,'#6b5238'],[82,16,90,56,0,.72,'#6b5238']],
+    m:[[14,14,86,86,0,.85,'#e9ecef']],
+    n:[[10,40,90,46,.5,1.2,'#15171a']],
+    p:[[34,34,66,66,0,.35,'#8a6a4e'],[24,24,76,76,.35,1.1,'#4f8a4f']],
+    q:[[16,30,84,70,0,.4,'#8b6b4a']],
+    r:[[0,6,100,13,.55,2.25,'#15171a'],[0,13,100,16,.62,2.18,'#8fa6bd']],
+    s:[[0,0,100,100,0,.42,'#6f7c8a'],[0,0,100,26,0,.85,'#5d6875']],
+    t:[[0,0,100,100,0,.42,'#6f7c8a'],[0,0,100,26,0,.85,'#5d6875'],[0,0,26,100,0,.85,'#5d6875']],
+    u:[[0,0,100,100,0,.9,'#cfcac1']],
+    v:[[0,0,100,100,0,.9,'#cfcac1']],
+    w:[[0,0,100,100,0,.9,'#cfcac1'],[14,24,86,90,.9,.92,'#1e1f22']],
+    x:[[0,0,100,100,0,.9,'#cfcac1'],[18,32,82,86,.9,.905,'#9aa4ad']],
+    y:[[12,4,88,32,.3,1.0,'#8c8c8c']],
+    z:[[26,4,74,38,.42,.46,'#8b6b4a'],[24,40,76,48,0,.9,'#6b5238'],[30,8,36,34,0,.42,'#6b5238'],[64,8,70,34,0,.42,'#6b5238']]
+  };
+  const EXT_RE = /jard|patio|piscina|pileta|p[eé]rgola|vereda|terraza|balc[oó]n/i;
+  const WATER_RE = /piscina|pileta/i;
+
+  let threeLoading = null;
+  function loadThree(){
+    if (window.THREE) return Promise.resolve(window.THREE);
+    if (!threeLoading){
+      threeLoading = new Promise((resolve, reject) => {
+        const sc = document.createElement('script');
+        sc.src = THREE_URL; sc.async = true;
+        sc.onload = () => window.THREE ? resolve(window.THREE) : reject(new Error('three'));
+        sc.onerror = () => { threeLoading = null; reject(new Error('three')); };
+        document.head.appendChild(sc);
+      });
+    }
+    return threeLoading;
+  }
+
+  // Regiones de una planta: celdas conectadas sin bordes entre sí; "cerrada" si no toca el exterior de la grilla
+  function regionsOf(p){
+    const R = st.rows, C = st.cols;
+    const id = Array.from({ length:R }, () => new Array(C).fill(-1));
+    const regions = [];
+    for (let si = 0; si < R; si++) for (let sj = 0; sj < C; sj++){
+      if (id[si][sj] !== -1) continue;
+      const r = regions.length, cells = [], stack = [[si, sj]];
+      let closed = true;
+      id[si][sj] = r;
+      while (stack.length){
+        const [i, j] = stack.pop();
+        cells.push([i, j]);
+        const nb = [[!p.h[i][j], i - 1, j, i === 0], [!p.h[i + 1][j], i + 1, j, i === R - 1],
+                    [!p.v[i][j], i, j - 1, j === 0], [!p.v[i][j + 1], i, j + 1, j === C - 1]];
+        for (const [open, ni, nj, border] of nb){
+          if (!open) continue;
+          if (border){ closed = false; continue; }
+          if (id[ni][nj] === -1){ id[ni][nj] = r; stack.push([ni, nj]); }
+        }
+      }
+      let name = '';
+      for (const [i, j] of cells){ const n = p.names && p.names[i + '_' + j]; if (n){ name = n; break; } }
+      regions.push({ cells, closed, name, ext: !closed || EXT_RE.test(name), water: closed && WATER_RE.test(name) });
+    }
+    return { id, regions };
+  }
+
+  function rotRect(r, o){
+    const pts = [[r[0], r[1]], [r[2], r[3]]].map(([x, y]) =>
+      o === 1 ? [100 - y, x] : o === 2 ? [100 - x, 100 - y] : o === 3 ? [y, 100 - x] : [x, y]);
+    return [Math.min(pts[0][0], pts[1][0]), Math.min(pts[0][1], pts[1][1]), Math.max(pts[0][0], pts[1][0]), Math.max(pts[0][1], pts[1][1])];
+  }
+
+  const v3 = { open:false, renderer:null, scene:null, camera:null, group:null, box:null, mats:{}, dirty:true,
+               target:null, theta:0.55, phi:0.95, radius:20, pointers:new Map(), raf:0 };
+
+  function mat3(color, opts){
+    const key = color + JSON.stringify(opts || {});
+    if (!v3.mats[key]) v3.mats[key] = new THREE.MeshStandardMaterial(Object.assign({ color:new THREE.Color(color).convertSRGBToLinear(), roughness:0.85, metalness:0 }, opts || {}));
+    return v3.mats[key];
+  }
+  function addBox(x0, z0, x1, z1, y0, y1, color, opts, noShadow){
+    const w = x1 - x0, d = z1 - z0, hgt = y1 - y0;
+    if (w <= 0 || d <= 0 || hgt <= 0) return;
+    const mesh = new THREE.Mesh(v3.box, mat3(color, opts));
+    mesh.scale.set(w, hgt, d);
+    mesh.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    mesh.castShadow = !noShadow; mesh.receiveShadow = true;
+    v3.group.add(mesh);
+  }
+
+  function buildFloor3D(p, base, level, showFurn){
+    const R = st.rows, C = st.cols, m = st.meters, t = H3.thick / 2;
+    const info = regionsOf(p);
+    const ext = (i, j) => (i < 0 || j < 0 || i >= R || j >= C) ? true : info.regions[info.id[i][j]].ext;
+    // Pisos interiores (y agua de piscina), por tramos horizontales para reducir la cantidad de piezas
+    for (let i = 0; i < R; i++){
+      let j = 0;
+      while (j < C){
+        const reg = info.regions[info.id[i][j]];
+        const kind = reg.water ? 'water' : (reg.ext ? null : 'floor');
+        if (!kind){ j++; continue; }
+        const j0 = j;
+        while (j < C){
+          const r2 = info.regions[info.id[i][j]];
+          if ((r2.water ? 'water' : (r2.ext ? null : 'floor')) !== kind) break;
+          j++;
+        }
+        if (kind === 'water') addBox(j0 * m, i * m, j * m, (i + 1) * m, base - 0.03, base + 0.01, COL3.water, { roughness:0.15, metalness:0.1 }, true);
+        else if (level === 0) addBox(j0 * m, i * m, j * m, (i + 1) * m, base - 0.02, base + 0.02, COL3.floor, null, true);
+        else addBox(j0 * m, i * m, j * m, (i + 1) * m, base - 0.2, base + 0.01, COL3.slab);
+      }
+    }
+    // Bordes. Con «Paredes bajas» todo se recorta a 1,1 m para ver el interior.
+    const cap = $('v3dLow').checked ? 1.1 : H3.wall;
+    const box3 = (horiz, fixed, a0, a1, y0, y1, color, opts, half) => {
+      y1 = Math.min(y1, cap);
+      if (y1 <= y0) return;
+      const hh = half == null ? t : half;
+      if (horiz) addBox(a0, fixed - hh, a1, fixed + hh, base + y0, base + y1, color, opts);
+      else addBox(fixed - hh, a0, fixed + hh, a1, base + y0, base + y1, color, opts);
+    };
+    // Recorre una línea de bordes: une los tramos consecutivos de pared (o de cerco) en una sola pieza
+    const line = (horiz, fixed, n, valAt, outAt) => {
+      let k = 0;
+      while (k < n){
+        const val = valAt(k), out = outAt(k);
+        if (val === 7){
+          const a0 = k * m, a1 = (k + 1) * m, hb = level > 0 ? 1.0 : H3.fence, col = '#16181b';
+          box3(horiz, fixed, a0, a1, 0, 0.05, col, null, 0.025);
+          box3(horiz, fixed, a0, a1, hb - 0.05, hb, col, null, 0.025);
+          const nb = Math.max(2, Math.round(m / 0.12));
+          for (let b = 0; b < nb; b++){
+            const c = a0 + (b + 0.5) * (a1 - a0) / nb;
+            box3(horiz, fixed, c - 0.01, c + 0.01, 0.05, hb - 0.05, col, null, 0.01);
+          }
+          k++; continue;
+        }
+        if (!val || (out && level > 0)){ k++; continue; }
+        if (val === 1){
+          const k0 = k;
+          while (k < n && valAt(k) === 1 && outAt(k) === out) k++;
+          const a0 = k0 * m - t, a1 = k * m + t;
+          if (out) box3(horiz, fixed, a0, a1, 0, H3.fence, COL3.fence);
+          else box3(horiz, fixed, a0, a1, 0, H3.wall, COL3.wall);
+          continue;
+        }
+        const a0 = k * m, a1 = (k + 1) * m;
+        if (out){
+          if (val === 3) box3(horiz, fixed, a0, a1, 0, 0.12, COL3.curb, null, 0.1);
+        } else if (isDoor(val)){
+          box3(horiz, fixed, a0, a1, H3.door, H3.wall, COL3.wall);
+        } else if (val === 3){
+          box3(horiz, fixed, a0, a1, 0, H3.sill, COL3.wall);
+          box3(horiz, fixed, a0, a1, H3.lintel, H3.wall, COL3.wall);
+          box3(horiz, fixed, a0, a1, H3.sill, H3.lintel, COL3.glass, { transparent:true, opacity:0.3, roughness:0.1 }, 0.015);
+        }
+        k++;
+      }
+    };
+    for (let i = 0; i <= R; i++) line(true, i * m, C, j => p.h[i][j], j => ext(i - 1, j) && ext(i, j));
+    for (let j = 0; j <= C; j++) line(false, j * m, R, i => p.v[i][j], i => ext(i, j - 1) && ext(i, j));
+    if (!showFurn) return;
+    // Muebles
+    for (let i = 0; i < R; i++) for (let j = 0; j < C; j++){
+      const it = p.f[i] && p.f[i][j]; if (!it) continue;
+      const X = j * m, Z = i * m, o = it.o || 0;
+      if (it.k === 'o'){
+        // Escalera: cada cuadro sube un escalón en el sentido de la flecha del ícono (giro 0 = hacia el norte)
+        const vert = o === 0 || o === 2;
+        const same = (a, b) => a >= 0 && b >= 0 && a < R && b < C && p.f[a][b] && p.f[a][b].k === 'o' && (p.f[a][b].o || 0) === o;
+        let lo = vert ? i : j, hi = lo;
+        while (vert ? same(lo - 1, j) : same(i, lo - 1)) lo--;
+        while (vert ? same(hi + 1, j) : same(i, hi + 1)) hi++;
+        const n = hi - lo + 1, pos = vert ? i : j;
+        const rank = (o === 0 || o === 3) ? (hi - pos + 1) : (pos - lo + 1);
+        addBox(X, Z, X + m, Z + m, base, base + H3.floor * rank / n, '#b9a58b');
+        continue;
+      }
+      if (it.k === 'c'){
+        addBox(X, Z, X + m, Z + m, base + 0.72, base + 0.76, '#8b6b4a');
+        addBox(X + m * 0.45, Z + m * 0.45, X + m * 0.55, Z + m * 0.55, base, base + 0.72, '#6b5238');
+        continue;
+      }
+      for (const part of (FURN3D[it.k] || [])){
+        const r = rotRect(part, o);
+        addBox(X + r[0] / 100 * m, Z + r[1] / 100 * m, X + r[2] / 100 * m, Z + r[3] / 100 * m, base + part[4], base + part[5], part[6]);
+      }
+    }
+  }
+
+  function build3D(){
+    if (v3.group){ v3.scene.remove(v3.group); }
+    v3.group = new THREE.Group();
+    syncPiso();
+    const m = st.meters, W = st.cols * m, D = st.rows * m;
+    addBox(-2, -2, W + 2, D + 2, -0.08, -0.03, COL3.grass, null, true);
+    const showFurn = $('v3dFurn').checked;
+    const has2 = floorHasContent(st.pisos[1]);
+    $('v3dP2wrap').hidden = !has2;
+    buildFloor3D(st.pisos[0], 0, 0, showFurn);
+    if (has2 && $('v3dP2').checked) buildFloor3D(st.pisos[1], H3.floor, 1, showFurn);
+    v3.scene.add(v3.group);
+    v3.dirty = true;
+  }
+
+  function resetCamera3D(){
+    const m = st.meters;
+    v3.target = new THREE.Vector3(st.cols * m / 2, 1, st.rows * m / 2);
+    v3.theta = 0.55; v3.phi = 0.95;
+    v3.radius = Math.max(st.cols, st.rows) * m * 1.35;
+    v3.dirty = true;
+  }
+  function updateCamera3D(){
+    const s = Math.sin(v3.phi);
+    v3.camera.position.set(v3.target.x + v3.radius * s * Math.sin(v3.theta),
+                           v3.target.y + v3.radius * Math.cos(v3.phi),
+                           v3.target.z + v3.radius * s * Math.cos(v3.theta));
+    v3.camera.lookAt(v3.target);
+  }
+  function resize3D(){
+    if (!v3.renderer) return;
+    const c = $('v3dCanvas');
+    const w = c.clientWidth || window.innerWidth, h = c.clientHeight || window.innerHeight;
+    v3.renderer.setSize(w, h, false);
+    v3.camera.aspect = w / h;
+    v3.camera.updateProjectionMatrix();
+    v3.dirty = true;
+  }
+  function loop3D(){
+    if (!v3.open || vr.session) return;
+    if (v3.dirty){ updateCamera3D(); v3.renderer.render(v3.scene, v3.camera); v3.dirty = false; }
+    v3.raf = requestAnimationFrame(loop3D);
+  }
+
+  function init3D(){
+    const canvas = $('v3dCanvas');
+    v3.renderer = new THREE.WebGLRenderer({ canvas, antialias:true, preserveDrawingBuffer:true });
+    v3.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    v3.renderer.shadowMap.enabled = true;
+    v3.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    v3.renderer.outputEncoding = THREE.sRGBEncoding;
+    v3.renderer.xr.enabled = true;
+    v3.scene = new THREE.Scene();
+    v3.scene.background = new THREE.Color('#11161c').convertSRGBToLinear();
+    v3.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
+    v3.box = new THREE.BoxGeometry(1, 1, 1);
+    v3.scene.add(new THREE.HemisphereLight('#dfe9f3', '#3a3226', 0.75));
+    // Sol desde el norte (hemisferio sur)
+    const sun = new THREE.DirectionalLight('#fff2dd', 0.85);
+    sun.position.set(8, 20, -14);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    Object.assign(sun.shadow.camera, { left:-18, right:18, top:18, bottom:-18, near:1, far:80 });
+    sun.shadow.bias = -0.0005;
+    v3.sun = sun;
+    v3.scene.add(sun); v3.scene.add(sun.target);
+
+    // Controles: arrastrar gira, Shift/derecho desplaza, rueda o pellizco acerca
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+    canvas.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      canvas.setPointerCapture(e.pointerId);
+      v3.pointers.set(e.pointerId, { x:e.clientX, y:e.clientY, pan: e.button === 2 || e.shiftKey });
+    });
+    const release = e => { v3.pointers.delete(e.pointerId); v3.pinch = null; };
+    canvas.addEventListener('pointerup', release);
+    canvas.addEventListener('pointercancel', release);
+    canvas.addEventListener('pointermove', e => {
+      const pt = v3.pointers.get(e.pointerId);
+      if (!pt) return;
+      const dx = e.clientX - pt.x, dy = e.clientY - pt.y;
+      if (v3.pointers.size === 2){
+        pt.x = e.clientX; pt.y = e.clientY;
+        const [a, b] = [...v3.pointers.values()];
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        if (v3.pinch) v3.radius = Math.min(90, Math.max(2, v3.radius * v3.pinch / dist));
+        v3.pinch = dist; v3.dirty = true;
+        return;
+      }
+      pt.x = e.clientX; pt.y = e.clientY;
+      if (pt.pan){
+        const k = v3.radius * 0.0016;
+        const right = new THREE.Vector3(Math.cos(v3.theta), 0, -Math.sin(v3.theta));
+        const fwd = new THREE.Vector3(Math.sin(v3.theta), 0, Math.cos(v3.theta));
+        v3.target.addScaledVector(right, -dx * k).addScaledVector(fwd, -dy * k);
+      } else {
+        v3.theta -= dx * 0.008;
+        v3.phi = Math.min(1.52, Math.max(0.12, v3.phi - dy * 0.008));
+      }
+      v3.dirty = true;
+    });
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      v3.radius = Math.min(90, Math.max(2, v3.radius * Math.exp(e.deltaY * 0.0005)));
+      v3.dirty = true;
+    }, { passive:false });
+    window.addEventListener('resize', () => { if (v3.open) resize3D(); });
+  }
+
+  async function open3D(){
+    if (editing) finishNameEdit(true);
+    $('v3d').hidden = false;
+    v3.open = true;
+    $('v3dMsg').textContent = window.THREE ? '' : 'Cargando la vista 3D…';
+    try {
+      await loadThree();
+    } catch(_){
+      $('v3dMsg').textContent = 'No se pudo cargar la biblioteca 3D. Verifica la conexión a internet.';
+      return;
+    }
+    if (!v3.open) return;
+    $('v3dMsg').textContent = '';
+    if (!v3.renderer) init3D();
+    build3D();
+    checkVR();
+    if (!v3.target) resetCamera3D();
+    resize3D();
+    cancelAnimationFrame(v3.raf);
+    loop3D();
+  }
+  function close3D(){
+    if (vr.session) vr.session.end();
+    v3.open = false;
+    cancelAnimationFrame(v3.raf);
+    $('v3d').hidden = true;
+  }
+  // ---- Modo VR (WebXR) ----
+  // Joystick izquierdo: caminar hacia donde se mira. Joystick derecho: giro por pasos de 30°.
+  // Botón A: cambiar de piso (si hay piso 2). Botón X: volver al punto de partida.
+  const vr = { supported:false, session:null, rig:null, clock:null, turnArmed:true, btn:{}, start:null, level:0 };
+
+  function vrStartPoint(){
+    // Centro del ambiente interior más grande de la planta baja, en un cuadro sin muebles
+    const p = st.pisos[0], info = regionsOf(p), m = st.meters;
+    let best = null;
+    for (const r of info.regions) if (!r.ext && (!best || r.cells.length > best.cells.length)) best = r;
+    if (!best) return { x: st.cols * m / 2, z: st.rows * m / 2 };
+    const cy = best.cells.reduce((a, c) => a + c[0], 0) / best.cells.length;
+    const cx = best.cells.reduce((a, c) => a + c[1], 0) / best.cells.length;
+    let pick = null, bd = Infinity;
+    for (const [i, j] of best.cells){
+      if (p.f[i] && p.f[i][j]) continue;
+      const d = (i - cy) ** 2 + (j - cx) ** 2;
+      if (d < bd){ bd = d; pick = [i, j]; }
+    }
+    if (!pick) pick = best.cells[0];
+    return { x:(pick[1] + 0.5) * m, z:(pick[0] + 0.5) * m };
+  }
+  function vrPlace(level){
+    vr.level = level;
+    vr.rig.position.set(vr.start.x, level ? H3.floor + 0.01 : 0, vr.start.z);
+    vr.rig.rotation.set(0, 0, 0);
+  }
+  function setShadows3D(on){
+    v3.sun.castShadow = on;
+    v3.renderer.shadowMap.enabled = on;
+    Object.values(v3.mats).forEach(mt => { mt.needsUpdate = true; });
+  }
+
+  function vrFrame(){
+    const dt = Math.min(0.1, vr.clock.getDelta());
+    const session = v3.renderer.xr.getSession();
+    if (session){
+      const cam = v3.camera;
+      const fwd = new THREE.Vector3(); cam.getWorldDirection(fwd); fwd.y = 0;
+      if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1);
+      fwd.normalize();
+      const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0));
+      for (const src of session.inputSources){
+        const gp = src.gamepad; if (!gp) continue;
+        const ax = gp.axes || [];
+        const x = ax.length >= 4 ? ax[2] : (ax[0] || 0), y = ax.length >= 4 ? ax[3] : (ax[1] || 0);
+        const pressed = k => !!(gp.buttons[k] && gp.buttons[k].pressed);
+        if (src.handedness === 'left'){
+          const dz = v => Math.abs(v) < 0.15 ? 0 : v;
+          const speed = 1.4;
+          vr.rig.position.addScaledVector(fwd, -dz(y) * speed * dt).addScaledVector(right, dz(x) * speed * dt);
+          const xBtn = pressed(4);
+          if (xBtn && !vr.btn.x) vrPlace(0);
+          vr.btn.x = xBtn;
+        } else if (src.handedness === 'right'){
+          if (vr.turnArmed && Math.abs(x) > 0.7){
+            const ang = (x > 0 ? -1 : 1) * Math.PI / 6;
+            const head = new THREE.Vector3(); cam.getWorldPosition(head);
+            vr.rig.position.sub(head).applyAxisAngle(new THREE.Vector3(0, 1, 0), ang).add(head);
+            vr.rig.rotation.y += ang;
+            vr.turnArmed = false;
+          } else if (Math.abs(x) < 0.3) vr.turnArmed = true;
+          const aBtn = pressed(4);
+          if (aBtn && !vr.btn.a && floorHasContent(st.pisos[1]) && $('v3dP2').checked){
+            vr.rig.position.y = vr.level ? 0 : H3.floor + 0.01;
+            vr.level = vr.level ? 0 : 1;
+          }
+          vr.btn.a = aBtn;
+        }
+      }
+    }
+    v3.renderer.render(v3.scene, v3.camera);
+  }
+
+  async function enterVR(){
+    if (vr.session){ vr.session.end(); return; }
+    try {
+      const session = await navigator.xr.requestSession('immersive-vr', { optionalFeatures:['local-floor', 'bounded-floor'] });
+      vr.session = session;
+      cancelAnimationFrame(v3.raf);
+      if (!vr.rig){
+        vr.rig = new THREE.Group();
+        v3.scene.add(vr.rig);
+        vr.clock = new THREE.Clock();
+        // Controles visibles: una pequeña barra en cada mano
+        for (let k = 0; k < 2; k++){
+          const grip = v3.renderer.xr.getControllerGrip(k);
+          const hand = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.12), mat3('#d99a1e'));
+          grip.add(hand); vr.rig.add(grip);
+        }
+      }
+      vr.rig.add(v3.camera);
+      vr.start = vrStartPoint();
+      vrPlace(0);
+      v3.scene.background = new THREE.Color('#a9c1d6').convertSRGBToLinear();
+      setShadows3D(false);
+      v3.renderer.xr.setReferenceSpaceType('local-floor');
+      await v3.renderer.xr.setSession(session);
+      $('v3dVR').textContent = 'Salir de VR';
+      vr.clock.getDelta();
+      v3.renderer.setAnimationLoop(vrFrame);
+      session.addEventListener('end', () => {
+        vr.session = null;
+        v3.renderer.setAnimationLoop(null);
+        v3.scene.add(v3.camera);
+        vr.rig.position.set(0, 0, 0); vr.rig.rotation.set(0, 0, 0);
+        v3.scene.background = new THREE.Color('#11161c').convertSRGBToLinear();
+        setShadows3D(true);
+        $('v3dVR').textContent = 'Entrar en VR';
+        resize3D();
+        v3.dirty = true;
+        if (v3.open) loop3D();
+      });
+    } catch(err){
+      vr.session = null;
+      $('v3dMsg').textContent = 'No se pudo iniciar el modo VR en este dispositivo.';
+      setTimeout(() => { if ($('v3dMsg').textContent.startsWith('No se pudo iniciar')) $('v3dMsg').textContent = ''; }, 4000);
+    }
+  }
+  async function checkVR(){
+    try { vr.supported = !!(navigator.xr && await navigator.xr.isSessionSupported('immersive-vr')); }
+    catch(_){ vr.supported = false; }
+    $('v3dVR').hidden = !vr.supported;
+  }
+  $('v3dVR').addEventListener('click', enterVR);
+
+  $('open3d').addEventListener('click', open3D);
+  $('v3dClose').addEventListener('click', close3D);
+  $('v3dReset').addEventListener('click', () => { if (window.THREE && v3.renderer){ resetCamera3D(); } });
+  $('v3dFurn').addEventListener('change', () => { if (v3.renderer) build3D(); });
+  $('v3dP2').addEventListener('change', () => { if (v3.renderer) build3D(); });
+  $('v3dLow').addEventListener('change', () => { if (v3.renderer) build3D(); });
+
   // ---- Atajos de teclado ----
   document.addEventListener('keydown', e => {
+    if (v3.open){ if (e.key === 'Escape') close3D(); return; }
     const tg = e.target.tagName;
     if (tg === 'TEXTAREA' || (tg === 'INPUT' && (e.target.type === 'number' || e.target.type === 'text'))) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){ e.preventDefault(); undo(); return; }
@@ -1393,6 +1969,7 @@ main{overflow:auto;padding:24px;display:flex}
     if (e.key === 'r' || e.key === 'R'){ rotate(); return; }
     if (e.key === 'Escape' && drag && drag.mode === 'mv'){ drag = null; tip.style.display = 'none'; render(); return; }
     if (e.key === '5'){ selectMove(); return; }
+    if (e.key === '6'){ selectEdgeTool(7); return; }
     const map = { '1':'t1', '2':'t2', '3':'t3', '4':'t0' };
     if (map[e.key]){ const r = $(map[e.key]); r.checked = true; selectEdgeTool(+r.value); }
   });
