@@ -141,6 +141,8 @@ main{overflow:auto;padding:24px;display:flex}
 #v3dCanvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
 .v3dbar{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 12px}
 .v3dbar .spacer{flex:1}
+#v3dVR.off{opacity:.55}
+.v3dmsg{max-width:min(560px,90vw);text-align:center;line-height:1.45}
 .v3dbar [hidden]{display:none}
 .v3dhelp{position:absolute;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));margin:0;font-size:.8rem;color:var(--muted);background:rgba(17,22,28,.8);padding:6px 10px;border-radius:6px}
 .v3dmsg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);margin:0;color:var(--ink);background:rgba(17,22,28,.88);padding:10px 16px;border-radius:8px;border:1px solid var(--border);pointer-events:none}
@@ -258,7 +260,7 @@ main{overflow:auto;padding:24px;display:flex}
     <label class="check"><input type="checkbox" id="v3dLow">Paredes bajas</label>
     <label class="check" id="v3dP2wrap"><input type="checkbox" id="v3dP2" checked>Piso 2</label>
     <span class="spacer"></span>
-    <button type="button" id="v3dVR" hidden>Entrar en VR</button>
+    <button type="button" id="v3dVR">Entrar en VR</button>
     <button type="button" id="v3dReset">Vista inicial</button>
     <button type="button" id="v3dClose" class="primary">Cerrar</button>
   </div>
@@ -1945,12 +1947,37 @@ main{overflow:auto;padding:24px;display:flex}
       setTimeout(() => { if ($('v3dMsg').textContent.startsWith('No se pudo iniciar')) $('v3dMsg').textContent = ''; }, 4000);
     }
   }
+  // Diagnóstico: por qué no está disponible la VR, en términos concretos
+  async function vrUnavailableReason(){
+    let framed = false;
+    try { framed = window.self !== window.top; } catch(_){ framed = true; }
+    if (framed) return 'La página está abierta dentro de otra página (por ejemplo, en claude.ai) y el navegador bloquea la VR dentro de marcos. Ábrela directamente desde GitHub Pages.';
+    if (!window.isSecureContext || location.protocol === 'file:') return 'La VR requiere que la página se abra por HTTPS. Ábrela desde GitHub Pages, no como archivo local.';
+    if (!navigator.xr) return 'Este navegador no soporta WebXR. En la PC usa Chrome o Edge; en el visor, el navegador del Quest.';
+    try {
+      if (!(await navigator.xr.isSessionSupported('immersive-vr')))
+        return 'El navegador soporta WebXR pero no detecta un visor. Con Virtual Desktop, verifica que el runtime OpenXR esté activo (VDXR o SteamVR) antes de abrir el navegador, y recarga la página.';
+    } catch(_){
+      return 'El navegador no permitió consultar el visor de VR. Recarga la página e inténtalo de nuevo.';
+    }
+    return '';
+  }
   async function checkVR(){
     try { vr.supported = !!(navigator.xr && await navigator.xr.isSessionSupported('immersive-vr')); }
     catch(_){ vr.supported = false; }
-    $('v3dVR').hidden = !vr.supported;
+    const b = $('v3dVR');
+    b.classList.toggle('off', !vr.supported);
+    b.title = vr.supported ? 'Entrar en realidad virtual' : 'VR no disponible: presiona para ver el motivo';
   }
-  $('v3dVR').addEventListener('click', enterVR);
+  $('v3dVR').addEventListener('click', async () => {
+    if (vr.supported || vr.session){ enterVR(); return; }
+    const why = await vrUnavailableReason();
+    if (!why){ vr.supported = true; $('v3dVR').classList.remove('off'); enterVR(); return; }
+    const msg = $('v3dMsg');
+    msg.textContent = why;
+    clearTimeout(vr.msgTimer);
+    vr.msgTimer = setTimeout(() => { if (msg.textContent === why) msg.textContent = ''; }, 9000);
+  });
 
   $('open3d').addEventListener('click', open3D);
   $('v3dClose').addEventListener('click', close3D);
