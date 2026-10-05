@@ -147,6 +147,10 @@ main{overflow:auto;padding:24px;display:flex}
 #v3dCanvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
 .v3dbar{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 12px}
 .v3dbar .spacer{flex:1}
+.v3dmat{position:absolute;top:calc(70px + env(safe-area-inset-top,0px));right:12px;width:min(300px,calc(100vw - 24px));max-height:calc(100vh - 150px);overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.v3dmat[hidden]{display:none}
+.v3dmat select,.v3dmat input[type=color]{width:100%;font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--border);border-radius:6px;padding:6px}
+.v3dmat input[type=color]{height:34px;padding:2px}
 #v3dVR.off{opacity:.55}
 .v3dmsg{max-width:min(560px,90vw);text-align:center;line-height:1.45}
 .v3dbar [hidden]{display:none}
@@ -295,12 +299,15 @@ main{overflow:auto;padding:24px;display:flex}
     <strong>Vista 3D</strong>
     <label class="check"><input type="checkbox" id="v3dFurn" checked>Muebles</label>
     <label class="check"><input type="checkbox" id="v3dLow">Paredes bajas</label>
+    <label class="check"><input type="checkbox" id="v3dRoof">Techo</label>
     <label class="check" id="v3dP2wrap"><input type="checkbox" id="v3dP2" checked>Piso 2</label>
     <span class="spacer"></span>
+    <button type="button" id="v3dMatBtn" aria-expanded="false">Materiales</button>
     <button type="button" id="v3dVR">Entrar en VR</button>
     <button type="button" id="v3dReset">Vista inicial</button>
     <button type="button" id="v3dClose" class="primary">Cerrar</button>
   </div>
+  <div class="v3dmat" id="v3dMat" hidden></div>
   <p class="v3dhelp">Arrastra para girar · Rueda o pellizco para acercar · Clic derecho o Shift + arrastrar para desplazar · Esc para cerrar</p>
   <p class="v3dmsg" id="v3dMsg" role="status"></p>
 </div>
@@ -1593,33 +1600,6 @@ main{overflow:auto;padding:24px;display:flex}
   const H3 = { wall:2.6, door:2.05, sill:0.9, lintel:2.05, floor:2.8, thick:0.15, fence:1.8 };
   const COL3 = { wall:'#e9e5dd', fence:'#77796f', floor:'#7a6450', slab:'#9a958e', grass:'#2c4630', curb:'#c4c1b8',
                  glass:'#9ec9e8', water:'#2f7fb8' };
-  // Volúmenes de cada mueble: [x0, y0, x1, y1] en el espacio 0..100 del cuadro (giro 0), altura desde y hasta, color
-  const FURN3D = {
-    a:[[0,0,100,100,0,.55,'#d9d2c3']],
-    b:[[4,24,96,80,0,.45,'#6f7c8a'],[4,24,96,40,0,.85,'#5d6875']],
-    d:[[0,0,100,100,0,.9,'#3a3d42']],
-    e:[[8,4,92,96,0,1.8,'#d7dbe0']],
-    f:[[0,0,100,100,0,.9,'#cfcac1']],
-    g:[[10,15,90,85,0,.85,'#e6e6e6']],
-    h:[[26,8,74,90,0,.42,'#f2f2f2']],
-    i:[[0,0,100,100,0,.05,'#dfe6ea']],
-    j:[[6,18,94,82,0,.55,'#f2f2f2']],
-    k:[[0,0,100,100,0,2.2,'#a58a6c']],
-    l:[[6,12,94,60,.72,.76,'#8b6b4a'],[10,16,18,56,0,.72,'#6b5238'],[82,16,90,56,0,.72,'#6b5238']],
-    m:[[14,14,86,86,0,.85,'#e9ecef']],
-    n:[[10,40,90,46,.5,1.2,'#15171a']],
-    p:[[34,34,66,66,0,.35,'#8a6a4e'],[24,24,76,76,.35,1.1,'#4f8a4f']],
-    q:[[16,30,84,70,0,.4,'#8b6b4a']],
-    r:[[0,6,100,13,.55,2.25,'#15171a'],[0,13,100,16,.62,2.18,'#8fa6bd']],
-    s:[[0,0,100,100,0,.42,'#6f7c8a'],[0,0,100,26,0,.85,'#5d6875']],
-    t:[[0,0,100,100,0,.42,'#6f7c8a'],[0,0,100,26,0,.85,'#5d6875'],[0,0,26,100,0,.85,'#5d6875']],
-    u:[[0,0,100,100,0,.9,'#cfcac1']],
-    v:[[0,0,100,100,0,.9,'#cfcac1']],
-    w:[[0,0,100,100,0,.9,'#cfcac1'],[14,24,86,90,.9,.92,'#1e1f22']],
-    x:[[0,0,100,100,0,.9,'#cfcac1'],[18,32,82,86,.9,.905,'#9aa4ad']],
-    y:[[12,4,88,32,.3,1.0,'#8c8c8c']],
-    z:[[26,4,74,38,.42,.46,'#8b6b4a'],[24,40,76,48,0,.9,'#6b5238'],[30,8,36,34,0,.42,'#6b5238'],[64,8,70,34,0,.42,'#6b5238']]
-  };
   const EXT_RE = /jard|patio|piscina|pileta|p[eé]rgola|vereda|terraza|balc[oó]n/i;
   const WATER_RE = /piscina|pileta/i;
 
@@ -1675,134 +1655,646 @@ main{overflow:auto;padding:24px;display:flex}
   const v3 = { open:false, renderer:null, scene:null, camera:null, group:null, box:null, mats:{}, dirty:true,
                target:null, theta:0.55, phi:0.95, radius:20, pointers:new Map(), raf:0 };
 
-  function mat3(color, opts){
-    const key = color + JSON.stringify(opts || {});
-    if (!v3.mats[key]) v3.mats[key] = new THREE.MeshStandardMaterial(Object.assign({ color:new THREE.Color(color).convertSRGBToLinear(), roughness:0.85, metalness:0 }, opts || {}));
-    return v3.mats[key];
+  // ===================== Construcción 3D =====================
+  // Texturas procedurales (dibujadas en canvas), muebles modelados con piezas simples,
+  // y fusión de todas las piezas de un mismo material en una sola malla (rendimiento en VR).
+
+  // ---- Configuración de materiales (se guarda por espacio de trabajo) ----
+  const MAT3D_DEFAULT = { floor:'madera-clara', wet:'ceramica', wall:'#e9e5dd', roof:'terracota', wood:'roble', fabric:'#6f7c8a', techo:false };
+  const mat3d = () => Object.assign({}, MAT3D_DEFAULT, st.mat3d || {});
+  const FLOOR_OPTS = { 'madera-clara':'Madera clara', 'madera-oscura':'Madera oscura', 'porcelanato':'Porcelanato claro',
+                       'ceramica':'Cerámica gris', 'calcareo':'Calcáreo (damero)', 'cemento':'Cemento alisado' };
+  const ROOF_OPTS = { terracota:['Terracota', '#b5562f'], pizarra:['Gris pizarra', '#59606a'], negro:['Negro', '#2b2c30'] };
+  const WOOD_OPTS = { roble:['Roble claro', '#b98b5e'], nogal:['Nogal', '#6e4a32'], blanco:['Blanco laqueado', '#ece8e1'] };
+  // Piso «húmedo»: baños y lavaderos siempre; la cocina solo si no está integrada al estar o comedor
+  const isWet = name => /ba[ñn]o|toilette|lavadero|ducha|vestuario/i.test(name) || (/cocina/i.test(name) && !/estar|comedor|living/i.test(name));
+
+  // ---- Texturas ----
+  const TEX = {};
+  function rng(seed){ let s = (seed >>> 0) || 1; return () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296; }
+  function tint(hex, f){ const c = new THREE.Color(hex); return `rgb(${Math.min(255, c.r * 255 * f) | 0},${Math.min(255, c.g * 255 * f) | 0},${Math.min(255, c.b * 255 * f) | 0})`; }
+  function canvasTex(key, size, draw){
+    if (TEX[key]) return TEX[key];
+    const c = document.createElement('canvas'); c.width = c.height = size;
+    draw(c.getContext('2d'), size);
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.encoding = THREE.sRGBEncoding;
+    t.anisotropy = 4;
+    return (TEX[key] = t);
   }
-  function addBox(x0, z0, x1, z1, y0, y1, color, opts, noShadow){
-    const w = x1 - x0, d = z1 - z0, hgt = y1 - y0;
-    if (w <= 0 || d <= 0 || hgt <= 0) return;
-    const mesh = new THREE.Mesh(v3.box, mat3(color, opts));
-    mesh.scale.set(w, hgt, d);
-    mesh.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-    mesh.castShadow = !noShadow; mesh.receiveShadow = true;
-    v3.group.add(mesh);
+  function grain(g, x, y, w, h, base, r, horizontal){
+    g.fillStyle = tint(base, 0.86 + r() * 0.24); g.fillRect(x, y, w, h);
+    const n = 6 + (r() * 6 | 0);
+    for (let k = 0; k < n; k++){
+      g.strokeStyle = tint(base, 0.7 + r() * 0.2); g.globalAlpha = 0.25 + r() * 0.25; g.lineWidth = 0.6 + r() * 1.2;
+      g.beginPath();
+      if (horizontal){ const yy = y + r() * h; g.moveTo(x, yy); g.bezierCurveTo(x + w * .3, yy + (r() - .5) * 4, x + w * .7, yy + (r() - .5) * 4, x + w, yy + (r() - .5) * 3); }
+      else { const xx = x + r() * w; g.moveTo(xx, y); g.bezierCurveTo(xx + (r() - .5) * 4, y + h * .3, xx + (r() - .5) * 4, y + h * .7, xx + (r() - .5) * 3, y + h); }
+      g.stroke();
+    }
+    g.globalAlpha = 1;
+  }
+  // Texturas de piso: cada una representa `tile` metros de lado
+  function floorTex(kind){
+    const r = rng(kind.length * 977);
+    const defs = {
+      'madera-clara': { tile:1.2, base:'#c49a6c' }, 'madera-oscura': { tile:1.2, base:'#7a5236' },
+      'porcelanato': { tile:1.2 }, 'ceramica': { tile:0.6 }, 'calcareo': { tile:0.6 }, 'cemento': { tile:2.0 }
+    };
+    const d = defs[kind] || defs['madera-clara'];
+    const tex = canvasTex('floor-' + kind, 512, (g, S) => {
+      if (kind.startsWith('madera')){
+        const rows = 8, rh = S / rows;
+        for (let k = 0; k < rows; k++){
+          let x = -(r() * S / 2);
+          while (x < S){
+            const len = S * (0.35 + r() * 0.35);
+            grain(g, x, k * rh, len, rh, d.base, r, true);
+            g.fillStyle = 'rgba(30,18,8,.55)'; g.fillRect(x, k * rh, 1.5, rh);
+            if (x + len > S){ grain(g, x - S, k * rh, len, rh, d.base, r, true); }
+            x += len;
+          }
+          g.fillStyle = 'rgba(30,18,8,.5)'; g.fillRect(0, k * rh, S, 1.5);
+        }
+      } else if (kind === 'porcelanato' || kind === 'ceramica'){
+        const n = 2, ts = S / n;
+        const base = kind === 'porcelanato' ? '#dcd9d2' : '#9a9c9c';
+        g.fillStyle = kind === 'porcelanato' ? '#b9b4aa' : '#6f7171'; g.fillRect(0, 0, S, S);
+        for (let a = 0; a < n; a++) for (let b = 0; b < n; b++){
+          g.fillStyle = tint(base, 0.95 + r() * 0.08); g.fillRect(a * ts + 2, b * ts + 2, ts - 4, ts - 4);
+          for (let k = 0; k < 900; k++){ g.fillStyle = tint(base, 0.88 + r() * 0.2); g.globalAlpha = 0.25; g.fillRect(a * ts + 2 + r() * (ts - 4), b * ts + 2 + r() * (ts - 4), 2, 2); }
+          if (kind === 'porcelanato'){
+            g.globalAlpha = 0.18; g.strokeStyle = '#a49f95'; g.lineWidth = 1.2; g.beginPath();
+            let x = a * ts + r() * ts, y = b * ts + 2; g.moveTo(x, y);
+            for (let k = 0; k < 6; k++){ x += (r() - .5) * ts * .4; y += ts / 6; g.lineTo(Math.max(a * ts + 2, Math.min(a * ts + ts - 2, x)), Math.min(b * ts + ts - 2, y)); }
+            g.stroke();
+          }
+          g.globalAlpha = 1;
+        }
+      } else if (kind === 'calcareo'){
+        const n = 4, ts = S / n;
+        for (let a = 0; a < n; a++) for (let b = 0; b < n; b++){
+          g.fillStyle = (a + b) % 2 ? '#2b2b2b' : '#e8e4da'; g.fillRect(a * ts, b * ts, ts, ts);
+          g.globalAlpha = 0.12; for (let k = 0; k < 300; k++){ g.fillStyle = r() < .5 ? '#000' : '#fff'; g.fillRect(a * ts + r() * ts, b * ts + r() * ts, 2, 2); } g.globalAlpha = 1;
+        }
+        g.strokeStyle = '#8d8a83'; g.lineWidth = 2;
+        for (let k = 0; k <= n; k++){ g.beginPath(); g.moveTo(k * ts, 0); g.lineTo(k * ts, S); g.moveTo(0, k * ts); g.lineTo(S, k * ts); g.stroke(); }
+      } else {
+        g.fillStyle = '#8f8c86'; g.fillRect(0, 0, S, S);
+        for (let k = 0; k < 6000; k++){ g.fillStyle = tint('#8f8c86', 0.85 + r() * 0.3); g.globalAlpha = 0.35; g.fillRect(r() * S, r() * S, 3, 3); }
+        for (let k = 0; k < 40; k++){ g.globalAlpha = 0.06; g.fillStyle = '#5c5a56'; g.beginPath(); g.arc(r() * S, r() * S, 20 + r() * 60, 0, 7); g.fill(); }
+        g.globalAlpha = 1;
+      }
+    });
+    return { tex, tile:d.tile };
+  }
+  function grassTex(){
+    return canvasTex('grass', 256, (g, S) => {
+      const r = rng(42);
+      g.fillStyle = '#3f6b3a'; g.fillRect(0, 0, S, S);
+      for (let k = 0; k < 5000; k++){ g.fillStyle = tint('#4d7d45', 0.7 + r() * 0.6); g.globalAlpha = .6; g.fillRect(r() * S, r() * S, 1.5, 3 + r() * 3); }
+      g.globalAlpha = 1;
+    });
+  }
+  function woodTex(kind){
+    const [, base] = WOOD_OPTS[kind] || WOOD_OPTS.roble;
+    return canvasTex('wood-' + kind, 256, (g, S) => {
+      const r = rng(7 + kind.length);
+      if (kind === 'blanco'){ g.fillStyle = base; g.fillRect(0, 0, S, S); return; }
+      grain(g, 0, 0, S, S, base, r, true);
+      for (let k = 0; k < 18; k++) grain(g, 0, r() * S, S, 3, base, r, true);
+    });
+  }
+  function doorTex(kind){
+    const [, base] = WOOD_OPTS[kind] || WOOD_OPTS.roble;
+    return canvasTex('door-' + kind, 256, (g, S) => {
+      const r = rng(99);
+      if (kind === 'blanco'){ g.fillStyle = base; g.fillRect(0, 0, S, S); } else grain(g, 0, 0, S, S, base, r, false);
+      // Dos tableros sobrerrelieve: luz arriba-izquierda, sombra abajo-derecha
+      const panel = (x, y, w, h) => {
+        g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3; g.beginPath(); g.moveTo(x, y + h); g.lineTo(x, y); g.lineTo(x + w, y); g.stroke();
+        g.strokeStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.moveTo(x + w, y); g.lineTo(x + w, y + h); g.lineTo(x, y + h); g.stroke();
+        g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 1; g.strokeRect(x + 8, y + 8, w - 16, h - 16);
+      };
+      panel(S * .18, S * .07, S * .64, S * .38);
+      panel(S * .18, S * .53, S * .64, S * .4);
+    });
+  }
+  function roofTex(kind){
+    const [, base] = ROOF_OPTS[kind] || ROOF_OPTS.terracota;
+    return canvasTex('roof-' + kind, 256, (g, S) => {
+      const r = rng(5);
+      g.fillStyle = tint(base, 0.6); g.fillRect(0, 0, S, S);
+      const rows = 8, cols = 8, rh = S / rows, cw = S / cols;
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++){
+        const ox = (y % 2) * cw / 2;
+        for (const dx of [0, -S]){
+          const x0 = x * cw + ox + dx;
+          const gr = g.createLinearGradient(x0, 0, x0 + cw, 0);
+          const c1 = tint(base, 0.8 + r() * 0.1), c2 = tint(base, 1.1 + r() * 0.1);
+          gr.addColorStop(0, c1); gr.addColorStop(0.5, c2); gr.addColorStop(1, c1);
+          g.fillStyle = gr;
+          g.beginPath(); g.moveTo(x0 + 1, y * rh); g.lineTo(x0 + cw - 1, y * rh);
+          g.quadraticCurveTo(x0 + cw - 1, y * rh + rh, x0 + cw / 2, y * rh + rh + 2); g.quadraticCurveTo(x0 + 1, y * rh + rh, x0 + 1, y * rh); g.fill();
+        }
+      }
+    });
   }
 
+  // ---- Materiales (cacheados en v3.mats) ----
+  const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
+  function M(key, make){ return v3.mats[key] || (v3.mats[key] = make()); }
+  function matC(hex, opts){ return M('c' + hex + JSON.stringify(opts || {}), () => new THREE.MeshStandardMaterial(Object.assign({ color:lin(hex), roughness:.8, metalness:0 }, opts || {}))); }
+  function matT(key, tex, opts){ return M('t' + key + JSON.stringify(opts || {}), () => new THREE.MeshStandardMaterial(Object.assign({ map:tex, roughness:.75, metalness:0 }, opts || {}))); }
+  function mat3(color, opts){ return matC(color, opts); }
+
+  // ---- Lote de geometría: piezas por material, fusionadas al final ----
+  const GEO = {};
+  function unitGeo(kind){
+    if (GEO[kind]) return GEO[kind];
+    let g;
+    if (kind === 'box') g = new THREE.BoxGeometry(1, 1, 1);
+    else if (kind === 'cyl') g = new THREE.CylinderGeometry(0.5, 0.5, 1, 18);
+    else if (kind === 'sph') g = new THREE.IcosahedronGeometry(1, 1);
+    return (GEO[kind] = g.index ? g.toNonIndexed() : g);
+  }
+  let BATCH = new Map();
+  let F = null;   // marco de referencia actual del mueble (Matrix4)
+  const IDQ = () => new THREE.Quaternion();
+  function push(geo, mat, matrix){ let a = BATCH.get(mat); if (!a) BATCH.set(mat, a = []); a.push([geo, matrix]); }
+  function setFrame(cx, cy, cz, rotY){ F = new THREE.Matrix4().compose(new THREE.Vector3(cx, cy, cz), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rotY || 0, 0)), new THREE.Vector3(1, 1, 1)); }
+  function pbox(x0, y0, z0, x1, y1, z1, mat){
+    if (x1 - x0 <= 0 || y1 - y0 <= 0 || z1 - z0 <= 0) return;
+    const m = new THREE.Matrix4().compose(new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), IDQ(), new THREE.Vector3(x1 - x0, y1 - y0, z1 - z0));
+    push(unitGeo('box'), mat, F.clone().multiply(m));
+  }
+  function pcyl(cx, y0, cz, rx, rz, y1, mat, axisZ){
+    const q = axisZ ? new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0)) : IDQ();
+    const m = axisZ
+      ? new THREE.Matrix4().compose(new THREE.Vector3(cx, y0, cz), q, new THREE.Vector3(rx * 2, y1 - y0, rz * 2))
+      : new THREE.Matrix4().compose(new THREE.Vector3(cx, (y0 + y1) / 2, cz), q, new THREE.Vector3(rx * 2, y1 - y0, rz * 2));
+    push(unitGeo('cyl'), mat, F.clone().multiply(m));
+  }
+  function psph(cx, cy, cz, rx, ry, rz, mat){
+    const m = new THREE.Matrix4().compose(new THREE.Vector3(cx, cy, cz), IDQ(), new THREE.Vector3(rx, ry, rz));
+    push(unitGeo('sph'), mat, F.clone().multiply(m));
+  }
+  // Cuadrilátero horizontal con coordenadas de textura en metros (pisos, césped)
+  function quad(x0, z0, x1, z1, y, tile, mat){
+    const g = new THREE.BufferGeometry();
+    const P = [x0, y, z0, x0, y, z1, x1, y, z1, x0, y, z0, x1, y, z1, x1, y, z0];
+    const U = []; for (let k = 0; k < 6; k++) U.push(P[k * 3] / tile, -P[k * 3 + 2] / tile);
+    g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute([0,1,0, 0,1,0, 0,1,0, 0,1,0, 0,1,0, 0,1,0], 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
+    push(g, mat, new THREE.Matrix4());
+  }
+  function flushBatch(){
+    const v = new THREE.Vector3(), nm = new THREE.Matrix3();
+    for (const [mat, list] of BATCH){
+      let total = 0;
+      for (const [g] of list) total += g.attributes.position.count;
+      const pos = new Float32Array(total * 3), nor = new Float32Array(total * 3), uv = new Float32Array(total * 2);
+      let o = 0;
+      for (const [g, m] of list){
+        nm.getNormalMatrix(m);
+        const P = g.attributes.position.array, N = g.attributes.normal.array, U = g.attributes.uv ? g.attributes.uv.array : null, n = g.attributes.position.count;
+        for (let k = 0; k < n; k++){
+          v.set(P[k * 3], P[k * 3 + 1], P[k * 3 + 2]).applyMatrix4(m);
+          pos[(o + k) * 3] = v.x; pos[(o + k) * 3 + 1] = v.y; pos[(o + k) * 3 + 2] = v.z;
+          v.set(N[k * 3], N[k * 3 + 1], N[k * 3 + 2]).applyMatrix3(nm).normalize();
+          nor[(o + k) * 3] = v.x; nor[(o + k) * 3 + 1] = v.y; nor[(o + k) * 3 + 2] = v.z;
+          if (U){ uv[(o + k) * 2] = U[k * 2]; uv[(o + k) * 2 + 1] = U[k * 2 + 1]; }
+        }
+        o += n;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+      geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.castShadow = !mat.userData.noCast; mesh.receiveShadow = true;
+      v3.group.add(mesh);
+    }
+    BATCH = new Map();
+  }
+
+  // ---- Materiales de la escena según la configuración ----
+  let MT = null;
+  function sceneMats(){
+    const c = mat3d();
+    const wood = matT('wood-' + c.wood, woodTex(c.wood), { roughness:.6 });
+    const glass = matC('#9ec9e8', { transparent:true, opacity:.28, roughness:.05 });
+    glass.userData.noCast = true;
+    const water = matC('#2f7fb8', { roughness:.12, metalness:.1 }); water.userData.noCast = true;
+    return {
+      cfg:c,
+      wall:matC(c.wall, { roughness:.92 }), fence:matC('#77796f'), slab:matC('#9a958e'), curb:matC('#c4c1b8'),
+      glass, water, frame:matC('#d6dade', { roughness:.4, metalness:.3 }), trim:matC('#f1efe9', { roughness:.6 }),
+      wood, door:matT('door-' + c.wood, doorTex(c.wood), { roughness:.6 }),
+      fabric:matC(c.fabric, { roughness:.95 }), fabric2:matC(tint(c.fabric, 1.25).replace(/rgb\((\d+),(\d+),(\d+)\)/, (_, r, g, b) => '#' + [r, g, b].map(x => (+x).toString(16).padStart(2, '0')).join('')), { roughness:.95 }),
+      linen:matC('#efebe3', { roughness:.95 }), white:matC('#f4f4f1', { roughness:.3 }), cab:matC('#e7e4de', { roughness:.5 }),
+      top:matC('#3a3c3f', { roughness:.35 }), black:matC('#1b1c1f', { roughness:.45 }), steel:matC('#b9bec4', { roughness:.28, metalness:.7 }),
+      darkglass:matC('#33404b', { roughness:.15 }), green:matC('#4d8a45', { flatShading:true, roughness:.9 }), green2:matC('#3d7a3a', { flatShading:true, roughness:.9 }),
+      trunk:matC('#6b4a2f', { roughness:.9 }), pot:matC('#b5653d', { roughness:.8 }), screen:matC('#8fa6bd', { roughness:.6 }),
+      heater:matC('#8c8c8c', { roughness:.5, metalness:.3 }), reja:matC('#16181b', { roughness:.5, metalness:.4 }),
+      grass:matT('grass', grassTex(), { roughness:.95 }), roof:matT('roof-' + c.roof, roofTex(c.roof), { roughness:.8, side:THREE.DoubleSide })
+    };
+  }
+
+  // ---- Muebles: cada modelo en un marco canónico (ancho W en x, fondo D en z, la parte trasera hacia -z) ----
+  const MODEL = {
+    a(W, D){ // cama
+      const t = MT;
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) pbox(sx * (W / 2 - .05) - .025, 0, sz * (D / 2 - .05) - .025, sx * (W / 2 - .05) + .025, .12, sz * (D / 2 - .05) + .025, t.wood);
+      pbox(-W / 2, .12, -D / 2 + .05, W / 2, .32, D / 2, t.wood);
+      pbox(-W / 2, .12, -D / 2, W / 2, 1.0, -D / 2 + .07, t.fabric);
+      pbox(-W / 2 + .03, .32, -D / 2 + .09, W / 2 - .03, .52, D / 2 - .03, t.linen);
+      pbox(-W / 2 + .01, .5, -D / 2 + D * .32, W / 2 - .01, .57, D / 2 - .01, t.fabric2);
+      const n = W > 1.15 ? 2 : 1, pw = (W - .16) / n;
+      for (let k = 0; k < n; k++) pbox(-W / 2 + .08 + k * pw + .03, .52, -D / 2 + .12, -W / 2 + .08 + (k + 1) * pw - .03, .65, -D / 2 + .42, t.linen);
+    },
+    s(W, D){ const t = MT; pbox(-W / 2, .06, -D / 2, W / 2, .24, D / 2, t.fabric); pbox(-W / 2 + .005, .24, -D / 2 + .18, W / 2 - .005, .44, D / 2 - .02, t.fabric2); pbox(-W / 2, .24, -D / 2, W / 2, .86, -D / 2 + .18, t.fabric); },
+    t(W, D){ const t = MT; pbox(-W / 2, .06, -D / 2, W / 2, .24, D / 2, t.fabric); pbox(-W / 2 + .18, .24, -D / 2 + .18, W / 2 - .005, .44, D / 2 - .02, t.fabric2); pbox(-W / 2, .24, -D / 2, W / 2, .86, -D / 2 + .18, t.fabric); pbox(-W / 2, .24, -D / 2, -W / 2 + .18, .86, D / 2, t.fabric); },
+    b(W, D){ const t = MT; MODEL.s(W, D); pbox(-W / 2, .24, -D / 2, -W / 2 + .1, .6, D / 2, t.fabric); pbox(W / 2 - .1, .24, -D / 2, W / 2, .6, D / 2, t.fabric); },
+    c(W, D){ // mesa
+      const t = MT;
+      pbox(-W / 2 + .01, .73, -D / 2 + .01, W / 2 - .01, .77, D / 2 - .01, t.wood);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) pbox(sx * (W / 2 - .08) - .03, 0, sz * (D / 2 - .08) - .03, sx * (W / 2 - .08) + .03, .73, sz * (D / 2 - .08) + .03, t.wood);
+    },
+    z(W, D){ // silla, mirando hacia -z (hacia la mesa)
+      const t = MT, s = Math.min(.42, W * .84), zc = -D / 2 + Math.min(D * .21 + s / 2 - .1, D / 2) ;
+      pbox(-s / 2, .43, zc - s / 2, s / 2, .47, zc + s / 2, t.wood);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) pbox(sx * (s / 2 - .03) - .015, 0, zc + sz * (s / 2 - .03) - .015, sx * (s / 2 - .03) + .015, .43, zc + sz * (s / 2 - .03) + .015, t.wood);
+      pbox(-s / 2, .47, zc + s / 2 - .03, s / 2, .92, zc + s / 2, t.wood);
+    },
+    counter(W, D, extra){ // mesada base
+      const t = MT;
+      pbox(-W / 2, 0, -D / 2, W / 2, .1, D / 2 - .06, t.black);
+      pbox(-W / 2, .1, -D / 2, W / 2, .86, D / 2 - .02, t.cab);
+      if (extra !== 'corner'){
+        pbox(-.004, .14, D / 2 - .021, .004, .82, D / 2 - .016, t.top);
+        pbox(-.09, .76, D / 2 - .02, -.03, .775, D / 2 + .015, t.steel);
+        pbox(.03, .76, D / 2 - .02, .09, .775, D / 2 + .015, t.steel);
+      }
+      if (extra === 'sink'){
+        pbox(-W / 2, .86, -D / 2, W / 2, .9, -D / 2 + .1, t.top); pbox(-W / 2, .86, D / 2 - .07, W / 2, .9, D / 2 + .01, t.top);
+        pbox(-W / 2, .86, -D / 2 + .1, -W / 2 + .05, .9, D / 2 - .07, t.top); pbox(W / 2 - .05, .86, -D / 2 + .1, W / 2, .9, D / 2 - .07, t.top);
+        pbox(-W / 2 + .05, .72, -D / 2 + .1, W / 2 - .05, .73, D / 2 - .07, t.steel);
+        pcyl(0, .9, -D / 2 + .05, .015, .015, 1.15, t.steel);
+        pbox(-.012, 1.13, -D / 2 + .05, .012, 1.15, -D / 2 + .2, t.steel);
+      } else {
+        pbox(-W / 2, .86, -D / 2, W / 2, .9, D / 2 + .01, t.top);
+      }
+      if (extra === 'hob'){
+        pbox(-W / 2 + .03, .9, -D / 2 + .05, W / 2 - .03, .906, D / 2 - .05, t.black);
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) pcyl(sx * W * .2, .906, sz * D * .2, .05, .05, .911, t.steel);
+      }
+    },
+    u(W, D){ MODEL.counter(W, D); }, f(W, D){ MODEL.counter(W, D); },
+    v(W, D){ MODEL.counter(W, D, 'corner'); }, w(W, D){ MODEL.counter(W, D, 'hob'); }, x(W, D){ MODEL.counter(W, D, 'sink'); },
+    d(W, D){ MODEL.counter(W, D, 'hob'); pbox(-W / 2 + .04, .18, D / 2 - .02, W / 2 - .04, .7, D / 2 + .004, MT.black); },
+    e(W, D){ // heladera
+      const t = MT, wh = matC('#dfe3e6', { roughness:.3, metalness:.2 });
+      pbox(-W / 2 + .02, 0, -D / 2 + .03, W / 2 - .02, 1.8, D / 2, wh);
+      pbox(-W / 2 + .02, 1.17, D / 2 - .002, W / 2 - .02, 1.185, D / 2 + .003, t.black);
+      pbox(W / 2 - .08, 1.25, D / 2, W / 2 - .06, 1.55, D / 2 + .03, t.steel);
+      pbox(W / 2 - .08, .75, D / 2, W / 2 - .06, 1.1, D / 2 + .03, t.steel);
+    },
+    g(W, D){ // lavatorio con mueble
+      const t = MT;
+      pbox(-W / 2 + .03, .15, -D / 2, W / 2 - .03, .8, D / 2 - .08, t.cab);
+      pbox(-W / 2 + .01, .8, -D / 2, W / 2 - .01, .86, D / 2 - .04, t.white);
+      pbox(-W / 2 + .08, .845, -D / 2 + .1, W / 2 - .08, .861, D / 2 - .1, matC('#d8dbdc', { roughness:.2 }));
+      pcyl(0, .86, -D / 2 + .05, .012, .012, 1.0, t.steel);
+    },
+    h(W, D){ // inodoro
+      const t = MT;
+      pbox(-.18, .36, -D / 2, .18, .74, -D / 2 + .15, t.white);
+      pcyl(0, 0, -D / 2 + .33, .15, .2, .4, t.white);
+      pcyl(0, .4, -D / 2 + .33, .17, .22, .43, t.white);
+    },
+    i(W, D){ // ducha
+      const t = MT;
+      pbox(-W / 2, 0, -D / 2, W / 2, .05, D / 2, t.white);
+      pcyl(0, .05, 0, .04, .04, .052, t.steel);
+      pbox(-W / 2 + .04, .05, -D / 2 + .02, -W / 2 + .06, 2.05, -D / 2 + .04, t.steel);
+      pbox(-W / 2 + .04, 2.03, -D / 2 + .02, 0, 2.05, -D / 2 + .04, t.steel);
+      pcyl(0, 1.98, -D / 2 + .1, .1, .1, 2.0, t.steel);
+      pbox(-W / 2, .05, D / 2 - .012, 0, 2.0, D / 2, t.glass);
+    },
+    j(W, D){ // bañera
+      const t = MT;
+      pbox(-W / 2, 0, -D / 2, W / 2, .55, -D / 2 + .07, t.white); pbox(-W / 2, 0, D / 2 - .07, W / 2, .55, D / 2, t.white);
+      pbox(-W / 2, 0, -D / 2 + .07, -W / 2 + .07, .55, D / 2 - .07, t.white); pbox(W / 2 - .07, 0, -D / 2 + .07, W / 2, .55, D / 2 - .07, t.white);
+      pbox(-W / 2 + .07, 0, -D / 2 + .07, W / 2 - .07, .12, D / 2 - .07, t.white);
+    },
+    k(W, D){ // placard
+      const t = MT;
+      pbox(-W / 2, 0, -D / 2, W / 2, 2.2, D / 2 - .02, t.wood);
+      const n = Math.max(1, Math.round(W / .5));
+      for (let k = 1; k < n; k++){ const x = -W / 2 + k * W / n; pbox(x - .004, .05, D / 2 - .021, x + .004, 2.15, D / 2 - .016, t.black); }
+      for (let k = 0; k < n; k++){ const x = -W / 2 + (k + .5) * W / n + (k % 2 ? -1 : 1) * (W / n / 2 - .06); pbox(x - .01, .95, D / 2 - .02, x + .01, 1.25, D / 2 + .01, t.steel); }
+    },
+    l(W, D){ // escritorio
+      const t = MT, d = Math.min(D, .65);
+      pbox(-W / 2, .73, -D / 2, W / 2, .76, -D / 2 + d, t.wood);
+      for (const sx of [-1, 1]) for (const z of [-D / 2 + .05, -D / 2 + d - .05]) pbox(sx * (W / 2 - .05) - .025, 0, z - .025, sx * (W / 2 - .05) + .025, .73, z + .025, t.black);
+      pbox(-.25, .9, -D / 2 + .08, .25, 1.2, -D / 2 + .1, t.black);
+      pbox(-.03, .76, -D / 2 + .08, .03, .9, -D / 2 + .1, t.black);
+    },
+    m(W, D){ // lavarropas
+      const t = MT;
+      pbox(-W / 2 + .02, 0, -D / 2 + .02, W / 2 - .02, .85, D / 2, t.white);
+      pcyl(0, .42, D / 2 + .005, .16, .16, .43, t.darkglass, true);
+      pbox(-W / 2 + .04, .76, D / 2, W / 2 - .04, .82, D / 2 + .005, matC('#c9cdd1'));
+    },
+    n(W, D){ const t = MT; pbox(-W / 2, 0, -.2, W / 2, .45, .2, t.wood); pbox(-W / 2 + .02, .55, -.02, W / 2 - .02, 1.15, .02, t.black); pbox(-.08, .45, -.05, .08, .55, .05, t.black); },
+    q(W, D){ const t = MT; pbox(-W * .42, .36, -D * .28, W * .42, .4, D * .28, t.wood); for (const sx of [-1, 1]) for (const sz of [-1, 1]) pbox(sx * W * .36 - .02, 0, sz * D * .22 - .02, sx * W * .36 + .02, .36, sz * D * .22 + .02, t.wood); },
+    r(W, D){ const t = MT; pbox(-W / 2, .55, -D / 2 + .03, W / 2, 2.25, -D / 2 + .07, t.black); pbox(-W / 2, .62, -D / 2 + .07, W / 2, 2.18, -D / 2 + .08, t.screen); },
+    y(W, D){ const t = MT; pbox(-W * .38, .3, -D / 2, W * .38, 1.0, -D / 2 + .16, t.heater); for (let k = 0; k < 6; k++){ const x = -W * .3 + k * W * .12; pbox(x - .006, .4, -D / 2 + .16, x + .006, .9, -D / 2 + .17, t.black); } },
+    o(W, D){ // escalera: sube hacia el fondo (-z)
+      const t = MT, n = Math.max(2, Math.round(D / .27)), rise = H3.floor / n, run = D / n;
+      for (let k = 0; k < n; k++) pbox(-W / 2, 0, D / 2 - (k + 1) * run, W / 2, (k + 1) * rise, D / 2 - k * run, t.wood);
+    }
+  };
+  function plant(exterior){
+    const t = MT;
+    if (exterior){
+      pcyl(0, 0, 0, .09, .09, 1.5, t.trunk);
+      psph(0, 2.0, 0, .85, .8, .85, t.green); psph(.35, 1.7, .2, .55, .5, .55, t.green2); psph(-.3, 1.8, -.25, .6, .55, .6, t.green2);
+    } else {
+      pcyl(0, 0, 0, .14, .14, .32, t.pot);
+      psph(0, .6, 0, .24, .32, .24, t.green); psph(.1, .48, .08, .16, .2, .16, t.green2);
+    }
+  }
+  // Tipos que se modelan como una sola pieza cuando ocupan un bloque rectangular de cuadros iguales
+  const BLOCK_TYPES = new Set(['a', 'c', 'k', 'l', 'i', 'j', 'o']);
+
+  function buildFurniture(p, base, info){
+    const R = st.rows, C = st.cols, m = st.meters;
+    const seen = Array.from({ length:R }, () => new Array(C).fill(false));
+    for (let i = 0; i < R; i++) for (let j = 0; j < C; j++){
+      const it = p.f[i] && p.f[i][j];
+      if (!it || seen[i][j]) continue;
+      const k = it.k, o = it.o || 0;
+      let cells = [[i, j]];
+      if (BLOCK_TYPES.has(k)){
+        const st2 = [[i, j]]; seen[i][j] = true; cells = [];
+        while (st2.length){
+          const [a, b] = st2.pop(); cells.push([a, b]);
+          for (const [na, nb] of [[a - 1, b], [a + 1, b], [a, b - 1], [a, b + 1]]){
+            if (na < 0 || nb < 0 || na >= R || nb >= C || seen[na][nb]) continue;
+            const x = p.f[na][nb];
+            if (x && x.k === k && (x.o || 0) === o){ seen[na][nb] = true; st2.push([na, nb]); }
+          }
+        }
+        let i0 = R, i1 = -1, j0 = C, j1 = -1;
+        for (const [a, b] of cells){ i0 = Math.min(i0, a); i1 = Math.max(i1, a); j0 = Math.min(j0, b); j1 = Math.max(j1, b); }
+        if (cells.length !== (i1 - i0 + 1) * (j1 - j0 + 1)){
+          for (const [a, b] of cells) placeModel(k, o, a, a, b, b, base, info);
+          continue;
+        }
+        placeModel(k, o, i0, i1, j0, j1, base, info);
+        continue;
+      }
+      seen[i][j] = true;
+      placeModel(k, o, i, i, j, j, base, info);
+    }
+  }
+  function placeModel(k, o, i0, i1, j0, j1, base, info){
+    const m = st.meters;
+    const x0 = j0 * m, x1 = (j1 + 1) * m, z0 = i0 * m, z1 = (i1 + 1) * m;
+    setFrame((x0 + x1) / 2, base, (z0 + z1) / 2, -o * Math.PI / 2);
+    const W = o % 2 ? z1 - z0 : x1 - x0, D = o % 2 ? x1 - x0 : z1 - z0;
+    if (k === 'p'){ setFrame((x0 + x1) / 2, base, (z0 + z1) / 2, 0); plant(info && info.regions[info.id[i0][j0]].ext); return; }
+    if (MODEL[k]) MODEL[k](W, D);
+  }
+
+  // ---- Puertas: marco y hoja de madera entreabierta ----
+  function buildDoors(p, base, outsideAt){
+    const R = st.rows, C = st.cols, m = st.meters, t = MT;
+    const one = (horiz, line, k0, n, val) => {
+      const L = n * m, a0 = k0 * m, a1 = a0 + L;
+      const fixed = line * m;
+      if (outsideAt(horiz, line, k0)){ bars(horiz, fixed, a0, a1, base, 1.6); return; }
+      setFrame(0, 0, 0, 0);
+      // Marco
+      const tf = H3.thick / 2 + .01;
+      if (horiz){ pbox(a0, base, fixed - tf, a0 + .05, base + H3.door, fixed + tf, t.trim); pbox(a1 - .05, base, fixed - tf, a1, base + H3.door, fixed + tf, t.trim); pbox(a0, base + H3.door - .05, fixed - tf, a1, base + H3.door, fixed + tf, t.trim); }
+      else { pbox(fixed - tf, base, a0, fixed + tf, base + H3.door, a0 + .05, t.trim); pbox(fixed - tf, base, a1 - .05, fixed + tf, base + H3.door, a1, t.trim); pbox(fixed - tf, base + H3.door - .05, a0, fixed + tf, base + H3.door, a1, t.trim); }
+      // Hoja (misma lógica de bisagra y sentido que el plano 2D)
+      let dir = horiz ? (line === R ? -1 : 1) : (line === C ? -1 : 1);
+      if (val === 4 || val === 6) dir = -dir;
+      const hingeEnd = val === 5 || val === 6;
+      const leafL = L - .1;
+      let hx, hz, cx, cz, px, pz;
+      if (horiz){ hx = hingeEnd ? a1 - .05 : a0 + .05; hz = fixed; cx = hingeEnd ? -1 : 1; cz = 0; px = 0; pz = dir; }
+      else { hx = fixed; hz = hingeEnd ? a1 - .05 : a0 + .05; cx = 0; cz = hingeEnd ? -1 : 1; px = dir; pz = 0; }
+      const ang = 75 * Math.PI / 180;
+      const vx = cx * Math.cos(ang) + px * Math.sin(ang), vz = cz * Math.cos(ang) + pz * Math.sin(ang);
+      setFrame(hx + vx * leafL / 2, base + 1.0, hz + vz * leafL / 2, Math.atan2(-vz, vx));
+      pbox(-leafL / 2, -1.0, -.02, leafL / 2, .99, .02, t.door);
+      for (const sz of [-1, 1]) pbox(leafL / 2 - .1, -.02, sz * .02 - (sz < 0 ? .03 : 0), leafL / 2 - .04, 0, sz * .02 + (sz > 0 ? .03 : 0), t.steel);
+    };
+    for (let i = 0; i <= R; i++) for (let j = 0; j < C; j++){
+      const x = p.h[i][j]; if (!isDoor(x) || (j > 0 && p.h[i][j - 1] === x)) continue;
+      let n = 1; while (j + n < C && p.h[i][j + n] === x) n++;
+      one(true, i, j, n, x);
+    }
+    for (let j = 0; j <= C; j++) for (let i = 0; i < R; i++){
+      const x = p.v[i][j]; if (!isDoor(x) || (i > 0 && p.v[i - 1][j] === x)) continue;
+      let n = 1; while (i + n < R && p.v[i + n][j] === x) n++;
+      one(false, j, i, n, x);
+    }
+  }
+  function bars(horiz, fixed, a0, a1, base, hb){
+    const t = MT;
+    setFrame(0, 0, 0, 0);
+    const bx = (b0, b1, y0, y1, half) => horiz ? pbox(b0, base + y0, fixed - half, b1, base + y1, fixed + half, t.reja) : pbox(fixed - half, base + y0, b0, fixed + half, base + y1, b1, t.reja);
+    bx(a0, a1, 0, .05, .025); bx(a0, a1, hb - .05, hb, .025);
+    const nb = Math.max(2, Math.round((a1 - a0) / .12));
+    for (let b = 0; b < nb; b++){ const c = a0 + (b + .5) * (a1 - a0) / nb; bx(c - .01, c + .01, .05, hb - .05, .01); }
+  }
+
+  // ---- Pérgola sobre los ambientes con ese nombre ----
+  function pergola(cells, base){
+    const m = st.meters, t = MT;
+    let i0 = Infinity, i1 = -1, j0 = Infinity, j1 = -1;
+    for (const [i, j] of cells){ i0 = Math.min(i0, i); i1 = Math.max(i1, i); j0 = Math.min(j0, j); j1 = Math.max(j1, j); }
+    const x0 = j0 * m + .06, x1 = (j1 + 1) * m - .06, z0 = i0 * m + .06, z1 = (i1 + 1) * m - .06;
+    setFrame(0, 0, 0, 0);
+    for (const x of [x0, x1]) for (const z of [z0, z1]) pbox(x - .06, base, z - .06, x + .06, base + 2.4, z + .06, t.wood);
+    pbox(x0 - .1, base + 2.3, z0 - .05, x1 + .1, base + 2.45, z0 + .05, t.wood);
+    pbox(x0 - .1, base + 2.3, z1 - .05, x1 + .1, base + 2.45, z1 + .05, t.wood);
+    for (let x = x0; x <= x1 + 1e-6; x += .4) pbox(x - .025, base + 2.45, z0 - .2, x + .025, base + 2.6, z1 + .2, t.wood);
+  }
+
+  // ---- Techo de tejas a cuatro aguas sobre rectángulos de la planta ----
+  function rectsOf(mask){
+    const R = mask.length, C = mask[0].length, used = mask.map(r => r.map(() => false)), out = [];
+    for (let i = 0; i < R; i++) for (let j = 0; j < C; j++){
+      if (!mask[i][j] || used[i][j]) continue;
+      let w = 0; while (j + w < C && mask[i][j + w] && !used[i][j + w]) w++;
+      let h = 1;
+      while (i + h < R){ let ok = true; for (let k = 0; k < w; k++) if (!mask[i + h][j + k] || used[i + h][j + k]){ ok = false; break; } if (!ok) break; h++; }
+      for (let a = 0; a < h; a++) for (let b = 0; b < w; b++) used[i + a][j + b] = true;
+      out.push([i, j, h, w]);
+    }
+    return out;
+  }
+  function hipRoof(x0, z0, x1, z1, y){
+    const pitch = Math.tan(25 * Math.PI / 180), W = x1 - x0, D = z1 - z0, H = Math.min(W, D) / 2 * pitch;
+    const P = [], N = [], U = [];
+    const tri = (a, b, c) => {
+      const ab = new THREE.Vector3().subVectors(b, a), ac = new THREE.Vector3().subVectors(c, a), n = new THREE.Vector3().crossVectors(ab, ac).normalize();
+      if (n.y < 0){ [b, c] = [c, b]; n.negate(); }
+      const xs = Math.abs(n.x) > Math.abs(n.z);
+      for (const v of [a, b, c]){ P.push(v.x, v.y, v.z); N.push(n.x, n.y, n.z); U.push((xs ? v.z : v.x) / 1.6, (xs ? v.x : v.z) / 1.6 + v.y / 1.6); }
+    };
+    const V = (x, yy, z) => new THREE.Vector3(x, yy, z);
+    const A = V(x0, y, z0), B = V(x1, y, z0), Cc = V(x1, y, z1), Dd = V(x0, y, z1);
+    if (W >= D){
+      const zc = (z0 + z1) / 2, r1 = V(x0 + D / 2, y + H, zc), r2 = V(x1 - D / 2, y + H, zc);
+      tri(A, B, r2); tri(A, r2, r1); tri(Cc, Dd, r1); tri(Cc, r1, r2); tri(Dd, A, r1); tri(B, Cc, r2);
+    } else {
+      const xc = (x0 + x1) / 2, r1 = V(xc, y + H, z0 + W / 2), r2 = V(xc, y + H, z1 - W / 2);
+      tri(Dd, A, r1); tri(Dd, r1, r2); tri(B, Cc, r2); tri(B, r2, r1); tri(A, B, r1); tri(Cc, Dd, r2);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
+    push(g, MT.roof, new THREE.Matrix4());
+    // Alero visto desde abajo y canaleta
+    setFrame(0, 0, 0, 0);
+    pbox(x0, y - .08, z0, x1, y, z0 + .03, MT.trim); pbox(x0, y - .08, z1 - .03, x1, y, z1, MT.trim);
+    pbox(x0, y - .08, z0, x0 + .03, y, z1, MT.trim); pbox(x1 - .03, y - .08, z0, x1, y, z1, MT.trim);
+  }
+  function buildRoof(interior0, interior1){
+    const m = st.meters, ov = .35;
+    const top = (mask, y) => { for (const [i, j, h, w] of rectsOf(mask)) hipRoof(j * m - ov, i * m - ov, (j + w) * m + ov, (i + h) * m + ov, y); };
+    if (interior1){
+      top(interior1, H3.floor + H3.wall);
+      top(interior0.map((r, i) => r.map((v, j) => v && !interior1[i][j])), H3.wall);
+    } else top(interior0, H3.wall);
+  }
+
+  // ---- Planta: pisos, paredes, aberturas, muebles ----
   function buildFloor3D(p, base, level, showFurn){
-    const R = st.rows, C = st.cols, m = st.meters, t = H3.thick / 2;
+    const R = st.rows, C = st.cols, m = st.meters, t = H3.thick / 2, T = MT;
     const info = regionsOf(p);
     const ext = (i, j) => (i < 0 || j < 0 || i >= R || j >= C) ? true : info.regions[info.id[i][j]].ext;
-    // Pisos interiores (y agua de piscina), por tramos horizontales para reducir la cantidad de piezas
+    const c = T.cfg;
+    const fl = floorTex(c.floor), wet = floorTex(c.wet);
+    const matFloor = matT('floor-' + c.floor, fl.tex, { roughness:.55 }), matWet = matT('floor-' + c.wet, wet.tex, { roughness:.35 });
+    const interior = Array.from({ length:R }, () => new Array(C).fill(false));
+    // Pisos por tramos horizontales del mismo material
     for (let i = 0; i < R; i++){
       let j = 0;
       while (j < C){
         const reg = info.regions[info.id[i][j]];
-        const kind = reg.water ? 'water' : (reg.ext ? null : 'floor');
+        const kind = reg.water ? 'water' : reg.ext ? null : (isWet(reg.name) ? 'wet' : 'floor');
         if (!kind){ j++; continue; }
         const j0 = j;
         while (j < C){
           const r2 = info.regions[info.id[i][j]];
-          if ((r2.water ? 'water' : (r2.ext ? null : 'floor')) !== kind) break;
+          if ((r2.water ? 'water' : r2.ext ? null : (isWet(r2.name) ? 'wet' : 'floor')) !== kind) break;
+          if (kind !== 'water') interior[i][j] = true;
           j++;
         }
-        if (kind === 'water') addBox(j0 * m, i * m, j * m, (i + 1) * m, base - 0.03, base + 0.01, COL3.water, { roughness:0.15, metalness:0.1 }, true);
-        else if (level === 0) addBox(j0 * m, i * m, j * m, (i + 1) * m, base - 0.02, base + 0.02, COL3.floor, null, true);
-        else addBox(j0 * m, i * m, j * m, (i + 1) * m, base - 0.2, base + 0.01, COL3.slab);
+        if (kind === 'water'){ setFrame(0, 0, 0, 0); pbox(j0 * m, base - .03, i * m, j * m, base + .01, (i + 1) * m, T.water); continue; }
+        if (level > 0){ setFrame(0, 0, 0, 0); pbox(j0 * m, base - .2, i * m, j * m, base, (i + 1) * m, T.slab); }
+        quad(j0 * m, i * m, j * m, (i + 1) * m, base + .012, kind === 'wet' ? wet.tile : fl.tile, kind === 'wet' ? matWet : matFloor);
       }
     }
-    // Bordes. Con «Paredes bajas» todo se recorta a 1,1 m para ver el interior.
+    // Bordes
     const cap = $('v3dLow').checked ? 1.1 : H3.wall;
-    const box3 = (horiz, fixed, a0, a1, y0, y1, color, opts, half) => {
-      y1 = Math.min(y1, cap);
-      if (y1 <= y0) return;
+    setFrame(0, 0, 0, 0);
+    const box3 = (horiz, fixed, a0, a1, y0, y1, mat, half) => {
+      y1 = Math.min(y1, cap); if (y1 <= y0) return;
       const hh = half == null ? t : half;
-      if (horiz) addBox(a0, fixed - hh, a1, fixed + hh, base + y0, base + y1, color, opts);
-      else addBox(fixed - hh, a0, fixed + hh, a1, base + y0, base + y1, color, opts);
+      if (horiz) pbox(a0, base + y0, fixed - hh, a1, base + y1, fixed + hh, mat);
+      else pbox(fixed - hh, base + y0, a0, fixed + hh, base + y1, a1, mat);
     };
-    // Recorre una línea de bordes: une los tramos consecutivos de pared (o de cerco) en una sola pieza
     const line = (horiz, fixed, n, valAt, outAt) => {
       let k = 0;
       while (k < n){
         const val = valAt(k), out = outAt(k);
-        if (val === 7){
-          const a0 = k * m, a1 = (k + 1) * m, hb = level > 0 ? 1.0 : H3.fence, col = '#16181b';
-          box3(horiz, fixed, a0, a1, 0, 0.05, col, null, 0.025);
-          box3(horiz, fixed, a0, a1, hb - 0.05, hb, col, null, 0.025);
-          const nb = Math.max(2, Math.round(m / 0.12));
-          for (let b = 0; b < nb; b++){
-            const c = a0 + (b + 0.5) * (a1 - a0) / nb;
-            box3(horiz, fixed, c - 0.01, c + 0.01, 0.05, hb - 0.05, col, null, 0.01);
-          }
-          k++; continue;
-        }
+        if (val === 7){ setFrame(0, 0, 0, 0); bars(horiz, fixed, k * m, (k + 1) * m, base, Math.min(level > 0 ? 1.0 : H3.fence, cap)); setFrame(0, 0, 0, 0); k++; continue; }
         if (!val || (out && level > 0)){ k++; continue; }
         if (val === 1){
           const k0 = k;
           while (k < n && valAt(k) === 1 && outAt(k) === out) k++;
-          const a0 = k0 * m - t, a1 = k * m + t;
-          if (out) box3(horiz, fixed, a0, a1, 0, H3.fence, COL3.fence);
-          else box3(horiz, fixed, a0, a1, 0, H3.wall, COL3.wall);
+          box3(horiz, fixed, k0 * m - t, k * m + t, 0, out ? H3.fence : H3.wall, out ? T.fence : T.wall);
           continue;
         }
         const a0 = k * m, a1 = (k + 1) * m;
-        if (out){
-          if (val === 3) box3(horiz, fixed, a0, a1, 0, 0.12, COL3.curb, null, 0.1);
-        } else if (isDoor(val)){
-          box3(horiz, fixed, a0, a1, H3.door, H3.wall, COL3.wall);
-        } else if (val === 3){
-          box3(horiz, fixed, a0, a1, 0, H3.sill, COL3.wall);
-          box3(horiz, fixed, a0, a1, H3.lintel, H3.wall, COL3.wall);
-          box3(horiz, fixed, a0, a1, H3.sill, H3.lintel, COL3.glass, { transparent:true, opacity:0.3, roughness:0.1 }, 0.015);
+        if (out){ if (val === 3) box3(horiz, fixed, a0, a1, 0, .12, T.curb, .1); }
+        else if (isDoor(val)) box3(horiz, fixed, a0, a1, H3.door, H3.wall, T.wall);
+        else if (val === 3){
+          box3(horiz, fixed, a0, a1, 0, H3.sill, T.wall);
+          box3(horiz, fixed, a0, a1, H3.lintel, H3.wall, T.wall);
+          box3(horiz, fixed, a0, a1, H3.sill, H3.lintel, T.glass, .012);
+          box3(horiz, fixed, a0, a0 + .035, H3.sill, H3.lintel, T.frame, .035);
+          box3(horiz, fixed, a1 - .035, a1, H3.sill, H3.lintel, T.frame, .035);
+          box3(horiz, fixed, a0, a1, H3.sill, H3.sill + .04, T.frame, .05);
+          box3(horiz, fixed, a0, a1, H3.lintel - .035, H3.lintel, T.frame, .035);
         }
         k++;
       }
     };
     for (let i = 0; i <= R; i++) line(true, i * m, C, j => p.h[i][j], j => ext(i - 1, j) && ext(i, j));
     for (let j = 0; j <= C; j++) line(false, j * m, R, i => p.v[i][j], i => ext(i, j - 1) && ext(i, j));
-    if (!showFurn) return;
-    // Muebles
-    for (let i = 0; i < R; i++) for (let j = 0; j < C; j++){
-      const it = p.f[i] && p.f[i][j]; if (!it) continue;
-      const X = j * m, Z = i * m, o = it.o || 0;
-      if (it.k === 'o'){
-        // Escalera: cada cuadro sube un escalón en el sentido de la flecha del ícono (giro 0 = hacia el norte)
-        const vert = o === 0 || o === 2;
-        const same = (a, b) => a >= 0 && b >= 0 && a < R && b < C && p.f[a][b] && p.f[a][b].k === 'o' && (p.f[a][b].o || 0) === o;
-        let lo = vert ? i : j, hi = lo;
-        while (vert ? same(lo - 1, j) : same(i, lo - 1)) lo--;
-        while (vert ? same(hi + 1, j) : same(i, hi + 1)) hi++;
-        const n = hi - lo + 1, pos = vert ? i : j;
-        const rank = (o === 0 || o === 3) ? (hi - pos + 1) : (pos - lo + 1);
-        addBox(X, Z, X + m, Z + m, base, base + H3.floor * rank / n, '#b9a58b');
-        continue;
-      }
-      if (it.k === 'c'){
-        addBox(X, Z, X + m, Z + m, base + 0.72, base + 0.76, '#8b6b4a');
-        addBox(X + m * 0.45, Z + m * 0.45, X + m * 0.55, Z + m * 0.55, base, base + 0.72, '#6b5238');
-        continue;
-      }
-      for (const part of (FURN3D[it.k] || [])){
-        const r = rotRect(part, o);
-        addBox(X + r[0] / 100 * m, Z + r[1] / 100 * m, X + r[2] / 100 * m, Z + r[3] / 100 * m, base + part[4], base + part[5], part[6]);
-      }
-    }
+    if (cap >= H3.door) buildDoors(p, base, (horiz, line2, k0) => horiz ? (ext(line2 - 1, k0) && ext(line2, k0)) : (ext(k0, line2 - 1) && ext(k0, line2)));
+    // Pérgolas
+    if (level === 0) for (const r of info.regions) if (r.closed && /p[eé]rgola/i.test(r.name)) pergola(r.cells, base);
+    if (showFurn) buildFurniture(p, base, info);
+    return interior;
   }
 
   function build3D(){
-    if (v3.group){ v3.scene.remove(v3.group); }
+    if (v3.group){
+      v3.scene.remove(v3.group);
+      v3.group.traverse(o => { if (o.isMesh && o.geometry) o.geometry.dispose(); });
+    }
     v3.group = new THREE.Group();
     syncPiso();
+    MT = sceneMats();
+    BATCH = new Map();
     const m = st.meters, W = st.cols * m, D = st.rows * m;
-    addBox(-2, -2, W + 2, D + 2, -0.08, -0.03, COL3.grass, null, true);
+    quad(-3, -3, W + 3, D + 3, -.03, 2, MT.grass);
     const showFurn = $('v3dFurn').checked;
     const has2 = floorHasContent(st.pisos[1]);
     $('v3dP2wrap').hidden = !has2;
-    buildFloor3D(st.pisos[0], 0, 0, showFurn);
-    if (has2 && $('v3dP2').checked) buildFloor3D(st.pisos[1], H3.floor, 1, showFurn);
+    const show2 = has2 && $('v3dP2').checked;
+    const in0 = buildFloor3D(st.pisos[0], 0, 0, showFurn);
+    const in1 = show2 ? buildFloor3D(st.pisos[1], H3.floor, 1, showFurn) : null;
+    if (MT.cfg.techo && !$('v3dLow').checked) buildRoof(in0, in1);
+    flushBatch();
     v3.scene.add(v3.group);
     v3.dirty = true;
+  }
+
+  // ---- Panel de materiales ----
+  function renderMatPanel(){
+    const c = mat3d();
+    const opts = (obj, sel, label) => Object.entries(obj).map(([k, v]) => `<option value="${k}"${k === sel ? ' selected' : ''}>${Array.isArray(v) ? v[0] : v}</option>`).join('');
+    $('v3dMat').innerHTML = `
+      <label class="field">Piso de los ambientes<select data-k="floor">${opts(FLOOR_OPTS, c.floor)}</select></label>
+      <label class="field">Piso de baños, lavadero y cocina cerrada<select data-k="wet">${opts(FLOOR_OPTS, c.wet)}</select></label>
+      <label class="field">Color de las paredes<input type="color" data-k="wall" value="${c.wall}"></label>
+      <label class="field">Tejas del techo<select data-k="roof">${opts(ROOF_OPTS, c.roof)}</select></label>
+      <label class="field">Madera de muebles y puertas<select data-k="wood">${opts(WOOD_OPTS, c.wood)}</select></label>
+      <label class="field">Tapizados (cama y sillones)<input type="color" data-k="fabric" value="${c.fabric}"></label>
+      <button type="button" id="v3dMatReset">Restablecer</button>`;
+    $('v3dRoof').checked = !!c.techo;
+  }
+  function setMat3d(k, val){
+    st.mat3d = Object.assign({}, st.mat3d || {}, { [k]:val });
+    save(false);
+    if (v3.renderer) build3D();
   }
 
   function resetCamera3D(){
@@ -1845,7 +2337,6 @@ main{overflow:auto;padding:24px;display:flex}
     v3.scene = new THREE.Scene();
     v3.scene.background = new THREE.Color('#11161c').convertSRGBToLinear();
     v3.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
-    v3.box = new THREE.BoxGeometry(1, 1, 1);
     v3.scene.add(new THREE.HemisphereLight('#dfe9f3', '#3a3226', 0.75));
     // Sol desde el norte (hemisferio sur)
     const sun = new THREE.DirectionalLight('#fff2dd', 0.85);
@@ -1913,9 +2404,11 @@ main{overflow:auto;padding:24px;display:flex}
     if (!v3.open) return;
     $('v3dMsg').textContent = '';
     if (!v3.renderer) init3D();
+    $('v3dRoof').checked = !!mat3d().techo;
+    if (!$('v3dMat').hidden) renderMatPanel();
     build3D();
     checkVR();
-    if (!v3.target) resetCamera3D();
+    if (!v3.target || v3.lastSlot !== slot){ resetCamera3D(); v3.lastSlot = slot; }
     resize3D();
     cancelAnimationFrame(v3.raf);
     loop3D();
@@ -2083,6 +2576,16 @@ main{overflow:auto;padding:24px;display:flex}
   $('v3dFurn').addEventListener('change', () => { if (v3.renderer) build3D(); });
   $('v3dP2').addEventListener('change', () => { if (v3.renderer) build3D(); });
   $('v3dLow').addEventListener('change', () => { if (v3.renderer) build3D(); });
+  $('v3dRoof').addEventListener('change', e => setMat3d('techo', e.target.checked));
+  $('v3dMatBtn').addEventListener('click', () => {
+    const panel = $('v3dMat'), open = panel.hidden;
+    if (open) renderMatPanel();
+    panel.hidden = !open;
+    $('v3dMatBtn').setAttribute('aria-expanded', String(open));
+  });
+  $('v3dMat').addEventListener('change', e => { const k = e.target.dataset.k; if (k) setMat3d(k, e.target.value); });
+  $('v3dMat').addEventListener('input', e => { const k = e.target.dataset.k; if (k && e.target.type === 'color'){ clearTimeout(v3.colTimer); v3.colTimer = setTimeout(() => setMat3d(k, e.target.value), 150); } });
+  $('v3dMat').addEventListener('click', e => { if (e.target.id === 'v3dMatReset'){ st.mat3d = {}; save(false); renderMatPanel(); if (v3.renderer) build3D(); } });
 
   // ---- Exportar como texto (ASCII) ----
   // Pensado para pegar en otras IA: dibujo con reglas, ambientes numerados y leyendas.
