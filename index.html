@@ -151,6 +151,16 @@ main{overflow:auto;padding:24px;display:flex}
 .v3dmat[hidden]{display:none}
 .v3dmat select,.v3dmat input[type=color]{width:100%;font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--border);border-radius:6px;padding:6px}
 .v3dmat input[type=color]{height:34px;padding:2px}
+.v3dmat .mlbl{font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:-4px}
+.v3dmat .mgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.v3dmat .msw{aspect-ratio:1;padding:0;border-radius:6px;background-size:cover;border:2px solid var(--border)}
+.v3dmat .msw.sel{border-color:var(--hover);box-shadow:0 0 0 1px var(--hover)}
+.v3dmat .mcustom{aspect-ratio:1;border:2px dashed var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:700;position:relative;cursor:pointer}
+.v3dmat .mcustom input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.v3dmat .mcur{display:flex;align-items:center;gap:8px;font-size:.85rem;flex-wrap:wrap}
+.v3dmat .mchip{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background-size:cover;flex:none}
+.v3dmat .mcur button{padding:3px 8px;font-size:.78rem;margin-left:auto}
+.v3dmat .mbox{display:flex;flex-direction:column;gap:8px;padding:8px;border:1px dashed var(--border);border-radius:6px}
 #v3dVR.off{opacity:.55}
 .v3dmsg{max-width:min(560px,90vw);text-align:center;line-height:1.45}
 .v3dbar [hidden]{display:none}
@@ -1659,20 +1669,47 @@ main{overflow:auto;padding:24px;display:flex}
   // Texturas procedurales (dibujadas en canvas), muebles modelados con piezas simples,
   // y fusión de todas las piezas de un mismo material en una sola malla (rendimiento en VR).
 
-  // ---- Configuración de materiales (se guarda por espacio de trabajo) ----
-  const MAT3D_DEFAULT = { floor:'madera-clara', wet:'ceramica', wall:'#e9e5dd', roof:'terracota', wood:'roble', fabric:'#6f7c8a', techo:false };
-  const mat3d = () => Object.assign({}, MAT3D_DEFAULT, st.mat3d || {});
-  const FLOOR_OPTS = { 'madera-clara':'Madera clara', 'madera-oscura':'Madera oscura', 'porcelanato':'Porcelanato claro',
-                       'ceramica':'Cerámica gris', 'calcareo':'Calcáreo (damero)', 'cemento':'Cemento alisado' };
-  const ROOF_OPTS = { terracota:['Terracota', '#b5562f'], pizarra:['Gris pizarra', '#59606a'], negro:['Negro', '#2b2c30'] };
-  const WOOD_OPTS = { roble:['Roble claro', '#b98b5e'], nogal:['Nogal', '#6e4a32'], blanco:['Blanco laqueado', '#ece8e1'] };
+  // ---- Configuración de materiales por sector (se guarda por espacio de trabajo) ----
+  // Un acabado es { t:'color', c:'#hex' } o { t:'tex', id:'<textura>' }.
+  const SECTORS = {
+    pisos:['Pisos (todos los ambientes)', { t:'tex', id:'madera-clara' }],
+    humedos:['Pisos de baños, lavadero y cocina cerrada', { t:'tex', id:'ceramica' }],
+    paredes:['Paredes interiores', { t:'color', c:'#e9e5dd' }],
+    'paredes-ext':['Paredes exteriores', { t:'color', c:'#e3ded4' }],
+    zocalos:['Zócalos', { t:'color', c:'#f6f4f0' }],
+    boiserie:['Boiserie (friso con molduras)', { t:'color', c:'#f7f5f1' }],
+    techo:['Techo', { t:'tex', id:'tejas-terracota' }],
+    madera:['Madera de muebles y puertas', { t:'tex', id:'madera-roble' }],
+    tapizados:['Tapizados (cama y sillones)', { t:'color', c:'#6f7c8a' }],
+    mesadas:['Mesadas', { t:'color', c:'#3a3c3f' }],
+    'muebles-cocina':['Muebles de cocina', { t:'color', c:'#e7e4de' }]
+  };
+  function mat3d(){
+    const raw = st.mat3d || {};
+    const s = {};
+    for (const [k, [, def]] of Object.entries(SECTORS)) s[k] = def;
+    if (raw.s) Object.assign(s, raw.s);
+    else {
+      // Migración del formato anterior del panel
+      if (raw.floor) s.pisos = { t:'tex', id:raw.floor };
+      if (raw.wet) s.humedos = { t:'tex', id:raw.wet };
+      if (raw.wall) s.paredes = { t:'color', c:raw.wall };
+      if (raw.roof) s.techo = { t:'tex', id:'tejas-' + raw.roof };
+      if (raw.wood) s.madera = raw.wood === 'blanco' ? { t:'color', c:'#ece8e1' } : { t:'tex', id:'madera-' + raw.wood };
+      if (raw.fabric) s.tapizados = { t:'color', c:raw.fabric };
+    }
+    const bo = Object.assign({ all:false, h:1.0, rooms:{} }, raw.boiserie || {});
+    bo.rooms = Object.assign({}, bo.rooms);
+    return { s, rooms: raw.rooms || {}, techo: !!raw.techo, zocalos: raw.zocalos !== false, boiserie:bo };
+  }
   // Piso «húmedo»: baños y lavaderos siempre; la cocina solo si no está integrada al estar o comedor
   const isWet = name => /ba[ñn]o|toilette|lavadero|ducha|vestuario/i.test(name) || (/cocina/i.test(name) && !/estar|comedor|living/i.test(name));
 
-  // ---- Texturas ----
+  // ---- Texturas procedurales ----
   const TEX = {};
   function rng(seed){ let s = (seed >>> 0) || 1; return () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296; }
   function tint(hex, f){ const c = new THREE.Color(hex); return `rgb(${Math.min(255, c.r * 255 * f) | 0},${Math.min(255, c.g * 255 * f) | 0},${Math.min(255, c.b * 255 * f) | 0})`; }
+  function toHex(css){ const m = css.match(/\d+/g); return m ? '#' + m.slice(0, 3).map(x => (+x).toString(16).padStart(2, '0')).join('') : css; }
   function canvasTex(key, size, draw){
     if (TEX[key]) return TEX[key];
     const c = document.createElement('canvas'); c.width = c.height = size;
@@ -1695,59 +1732,77 @@ main{overflow:auto;padding:24px;display:flex}
     }
     g.globalAlpha = 1;
   }
-  // Texturas de piso: cada una representa `tile` metros de lado
-  function floorTex(kind){
-    const r = rng(kind.length * 977);
-    const defs = {
-      'madera-clara': { tile:1.2, base:'#c49a6c' }, 'madera-oscura': { tile:1.2, base:'#7a5236' },
-      'porcelanato': { tile:1.2 }, 'ceramica': { tile:0.6 }, 'calcareo': { tile:0.6 }, 'cemento': { tile:2.0 }
-    };
-    const d = defs[kind] || defs['madera-clara'];
-    const tex = canvasTex('floor-' + kind, 512, (g, S) => {
-      if (kind.startsWith('madera')){
-        const rows = 8, rh = S / rows;
-        for (let k = 0; k < rows; k++){
-          let x = -(r() * S / 2);
-          while (x < S){
-            const len = S * (0.35 + r() * 0.35);
-            grain(g, x, k * rh, len, rh, d.base, r, true);
-            g.fillStyle = 'rgba(30,18,8,.55)'; g.fillRect(x, k * rh, 1.5, rh);
-            if (x + len > S){ grain(g, x - S, k * rh, len, rh, d.base, r, true); }
-            x += len;
-          }
-          g.fillStyle = 'rgba(30,18,8,.5)'; g.fillRect(0, k * rh, S, 1.5);
-        }
-      } else if (kind === 'porcelanato' || kind === 'ceramica'){
-        const n = 2, ts = S / n;
-        const base = kind === 'porcelanato' ? '#dcd9d2' : '#9a9c9c';
-        g.fillStyle = kind === 'porcelanato' ? '#b9b4aa' : '#6f7171'; g.fillRect(0, 0, S, S);
-        for (let a = 0; a < n; a++) for (let b = 0; b < n; b++){
-          g.fillStyle = tint(base, 0.95 + r() * 0.08); g.fillRect(a * ts + 2, b * ts + 2, ts - 4, ts - 4);
-          for (let k = 0; k < 900; k++){ g.fillStyle = tint(base, 0.88 + r() * 0.2); g.globalAlpha = 0.25; g.fillRect(a * ts + 2 + r() * (ts - 4), b * ts + 2 + r() * (ts - 4), 2, 2); }
-          if (kind === 'porcelanato'){
-            g.globalAlpha = 0.18; g.strokeStyle = '#a49f95'; g.lineWidth = 1.2; g.beginPath();
-            let x = a * ts + r() * ts, y = b * ts + 2; g.moveTo(x, y);
-            for (let k = 0; k < 6; k++){ x += (r() - .5) * ts * .4; y += ts / 6; g.lineTo(Math.max(a * ts + 2, Math.min(a * ts + ts - 2, x)), Math.min(b * ts + ts - 2, y)); }
-            g.stroke();
-          }
-          g.globalAlpha = 1;
-        }
-      } else if (kind === 'calcareo'){
-        const n = 4, ts = S / n;
-        for (let a = 0; a < n; a++) for (let b = 0; b < n; b++){
-          g.fillStyle = (a + b) % 2 ? '#2b2b2b' : '#e8e4da'; g.fillRect(a * ts, b * ts, ts, ts);
-          g.globalAlpha = 0.12; for (let k = 0; k < 300; k++){ g.fillStyle = r() < .5 ? '#000' : '#fff'; g.fillRect(a * ts + r() * ts, b * ts + r() * ts, 2, 2); } g.globalAlpha = 1;
-        }
-        g.strokeStyle = '#8d8a83'; g.lineWidth = 2;
-        for (let k = 0; k <= n; k++){ g.beginPath(); g.moveTo(k * ts, 0); g.lineTo(k * ts, S); g.moveTo(0, k * ts); g.lineTo(S, k * ts); g.stroke(); }
-      } else {
-        g.fillStyle = '#8f8c86'; g.fillRect(0, 0, S, S);
-        for (let k = 0; k < 6000; k++){ g.fillStyle = tint('#8f8c86', 0.85 + r() * 0.3); g.globalAlpha = 0.35; g.fillRect(r() * S, r() * S, 3, 3); }
-        for (let k = 0; k < 40; k++){ g.globalAlpha = 0.06; g.fillStyle = '#5c5a56'; g.beginPath(); g.arc(r() * S, r() * S, 20 + r() * 60, 0, 7); g.fill(); }
-        g.globalAlpha = 1;
+  const speckle = (g, S, base, n, size, amp, r) => { for (let k = 0; k < n; k++){ g.fillStyle = tint(base, 1 - amp + r() * amp * 2); g.globalAlpha = .35; g.fillRect(r() * S, r() * S, size, size); } g.globalAlpha = 1; };
+  function planks(g, S, base, r){
+    const rows = 8, rh = S / rows;
+    for (let k = 0; k < rows; k++){
+      let x = -(r() * S / 2);
+      while (x < S){
+        const len = S * (0.35 + r() * 0.35);
+        grain(g, x, k * rh, len, rh, base, r, true);
+        g.fillStyle = 'rgba(30,18,8,.55)'; g.fillRect(x, k * rh, 1.5, rh);
+        if (x + len > S) grain(g, x - S, k * rh, len, rh, base, r, true);
+        x += len;
       }
-    });
-    return { tex, tile:d.tile };
+      g.fillStyle = 'rgba(30,18,8,.5)'; g.fillRect(0, k * rh, S, 1.5);
+    }
+  }
+  function tiles(g, S, n, base, grout, r, veins){
+    const ts = S / n;
+    g.fillStyle = grout; g.fillRect(0, 0, S, S);
+    for (let a = 0; a < n; a++) for (let b = 0; b < n; b++){
+      g.fillStyle = tint(base, 0.95 + r() * 0.08); g.fillRect(a * ts + 2, b * ts + 2, ts - 4, ts - 4);
+      for (let k = 0; k < 600; k++){ g.fillStyle = tint(base, 0.88 + r() * 0.2); g.globalAlpha = .22; g.fillRect(a * ts + 2 + r() * (ts - 4), b * ts + 2 + r() * (ts - 4), 2, 2); }
+      g.globalAlpha = 1;
+      if (veins){
+        g.globalAlpha = .2; g.strokeStyle = veins; g.lineWidth = 1.3; g.beginPath();
+        let x = a * ts + r() * ts, y = b * ts + 2; g.moveTo(x, y);
+        for (let k = 0; k < 7; k++){ x += (r() - .5) * ts * .45; y += ts / 7; g.lineTo(Math.max(a * ts + 2, Math.min(a * ts + ts - 2, x)), Math.min(b * ts + ts - 2, y)); }
+        g.stroke(); g.globalAlpha = 1;
+      }
+    }
+  }
+  function roofDraw(base){
+    return (g, S, r) => {
+      g.fillStyle = tint(base, 0.6); g.fillRect(0, 0, S, S);
+      const rows = 8, cols = 8, rh = S / rows, cw = S / cols;
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++){
+        const ox = (y % 2) * cw / 2;
+        for (const dx of [0, -S]){
+          const x0 = x * cw + ox + dx, gr = g.createLinearGradient(x0, 0, x0 + cw, 0);
+          const c1 = tint(base, 0.8 + r() * 0.1), c2 = tint(base, 1.1 + r() * 0.1);
+          gr.addColorStop(0, c1); gr.addColorStop(.5, c2); gr.addColorStop(1, c1);
+          g.fillStyle = gr; g.beginPath(); g.moveTo(x0 + 1, y * rh); g.lineTo(x0 + cw - 1, y * rh);
+          g.quadraticCurveTo(x0 + cw - 1, y * rh + rh, x0 + cw / 2, y * rh + rh + 2); g.quadraticCurveTo(x0 + 1, y * rh + rh, x0 + 1, y * rh); g.fill();
+        }
+      }
+    };
+  }
+  // Biblioteca: nombre, tamaño real que representa la textura (m), rugosidad, color base (para puertas) y dibujo
+  const TEXLIB = {
+    'madera-clara':   { n:'Madera clara (tablas)', tile:1.2, rough:.55, base:'#c49a6c', draw:(g, S, r) => planks(g, S, '#c49a6c', r) },
+    'madera-oscura':  { n:'Madera oscura (tablas)', tile:1.2, rough:.55, base:'#7a5236', draw:(g, S, r) => planks(g, S, '#7a5236', r) },
+    'madera-roble':   { n:'Roble', tile:1.0, rough:.6, base:'#b98b5e', draw:(g, S, r) => { grain(g, 0, 0, S, S, '#b98b5e', r, true); for (let k = 0; k < 18; k++) grain(g, 0, r() * S, S, 3, '#b98b5e', r, true); } },
+    'madera-nogal':   { n:'Nogal', tile:1.0, rough:.6, base:'#6e4a32', draw:(g, S, r) => { grain(g, 0, 0, S, S, '#6e4a32', r, true); for (let k = 0; k < 18; k++) grain(g, 0, r() * S, S, 3, '#6e4a32', r, true); } },
+    'porcelanato':    { n:'Porcelanato claro', tile:1.2, rough:.3, draw:(g, S, r) => tiles(g, S, 2, '#dcd9d2', '#b9b4aa', r, '#a49f95') },
+    'marmol':         { n:'Mármol', tile:1.2, rough:.2, draw:(g, S, r) => { tiles(g, S, 2, '#f1efeb', '#d6d2ca', r, null); g.globalAlpha = .3; for (let k = 0; k < 14; k++){ g.strokeStyle = r() < .5 ? '#9a9690' : '#b8b2a8'; g.lineWidth = .8 + r() * 1.6; g.beginPath(); let x = r() * S, y = 0; g.moveTo(x, y); while (y < S){ x += (r() - .5) * 40; y += 20 + r() * 30; g.lineTo(x, y); } g.stroke(); } g.globalAlpha = 1; } },
+    'ceramica':       { n:'Cerámica gris', tile:0.6, rough:.35, draw:(g, S, r) => tiles(g, S, 2, '#9a9c9c', '#6f7171', r, null) },
+    'calcareo':       { n:'Calcáreo (damero)', tile:0.6, rough:.4, draw:(g, S, r) => { const n = 4, ts = S / n; for (let a = 0; a < n; a++) for (let b = 0; b < n; b++){ g.fillStyle = (a + b) % 2 ? '#2b2b2b' : '#e8e4da'; g.fillRect(a * ts, b * ts, ts, ts); } speckle(g, S, '#888888', 2500, 2, .4, r); g.strokeStyle = '#8d8a83'; g.lineWidth = 2; for (let k = 0; k <= n; k++){ g.beginPath(); g.moveTo(k * ts, 0); g.lineTo(k * ts, S); g.moveTo(0, k * ts); g.lineTo(S, k * ts); g.stroke(); } } },
+    'cemento':        { n:'Cemento alisado', tile:2.0, rough:.7, draw:(g, S, r) => { g.fillStyle = '#8f8c86'; g.fillRect(0, 0, S, S); speckle(g, S, '#8f8c86', 6000, 3, .15, r); for (let k = 0; k < 40; k++){ g.globalAlpha = .06; g.fillStyle = '#5c5a56'; g.beginPath(); g.arc(r() * S, r() * S, 20 + r() * 60, 0, 7); g.fill(); } g.globalAlpha = 1; } },
+    'revoque':        { n:'Revoque fino', tile:1.5, rough:.95, draw:(g, S, r) => { g.fillStyle = '#ebe7e0'; g.fillRect(0, 0, S, S); speckle(g, S, '#ebe7e0', 9000, 2, .08, r); } },
+    'ladrillo':       { n:'Ladrillo visto', tile:1.0, rough:.9, draw:(g, S, r) => { const rows = 15, cols = 4, rh = S / rows, cw = S / cols; g.fillStyle = '#c8bfb2'; g.fillRect(0, 0, S, S); for (let y = 0; y < rows; y++) for (let x = -1; x < cols; x++){ const x0 = x * cw + (y % 2) * cw / 2; g.fillStyle = tint('#a8553a', .8 + r() * .35); g.fillRect(x0 + 2, y * rh + 2, cw - 4, rh - 4); } } },
+    'azulejo':        { n:'Azulejo blanco', tile:0.6, rough:.15, draw:(g, S, r) => { const rows = 8, cols = 4, rh = S / rows, cw = S / cols; g.fillStyle = '#c9c9c4'; g.fillRect(0, 0, S, S); for (let y = 0; y < rows; y++) for (let x = -1; x < cols; x++){ const x0 = x * cw + (y % 2) * cw / 2; g.fillStyle = tint('#f4f4f1', .96 + r() * .05); g.fillRect(x0 + 2, y * rh + 2, cw - 4, rh - 4); } } },
+    'piedra':         { n:'Piedra', tile:1.2, rough:.9, draw:(g, S, r) => { g.fillStyle = '#5d5a55'; g.fillRect(0, 0, S, S); for (let k = 0; k < 70; k++){ const x = r() * S, y = r() * S, w = 30 + r() * 60, h = 20 + r() * 35; g.fillStyle = tint('#9a958c', .75 + r() * .45); g.beginPath(); g.ellipse(x, y, w / 2, h / 2, r() * .6, 0, 7); g.fill(); } } },
+    'tejas-terracota':{ n:'Tejas terracota', tile:1.6, rough:.8, draw:roofDraw('#b5562f') },
+    'tejas-pizarra':  { n:'Tejas gris pizarra', tile:1.6, rough:.8, draw:roofDraw('#59606a') },
+    'tejas-negro':    { n:'Tejas negras', tile:1.6, rough:.8, draw:roofDraw('#2b2c30') }
+  };
+  const COLOR_SWATCHES = ['#ffffff','#f6f4f0','#e9e5dd','#d8d2c4','#c9c3b8','#a8a49c','#6f6b66','#2d2d2f',
+                          '#e8d9c0','#d9b99b','#c9962f','#b5562f','#8a5a3c','#7d2e2e','#b7c4a8','#7f9a7a',
+                          '#4f6b4d','#a9bfd3','#5f7896','#2f4058','#d8b4b4','#9c7aa6'];
+  function libTex(id){
+    const d = TEXLIB[id] || TEXLIB['madera-clara'];
+    return canvasTex('lib-' + id, 512, (g, S) => d.draw(g, S, rng(id.length * 977 + 13)));
   }
   function grassTex(){
     return canvasTex('grass', 256, (g, S) => {
@@ -1757,21 +1812,10 @@ main{overflow:auto;padding:24px;display:flex}
       g.globalAlpha = 1;
     });
   }
-  function woodTex(kind){
-    const [, base] = WOOD_OPTS[kind] || WOOD_OPTS.roble;
-    return canvasTex('wood-' + kind, 256, (g, S) => {
-      const r = rng(7 + kind.length);
-      if (kind === 'blanco'){ g.fillStyle = base; g.fillRect(0, 0, S, S); return; }
-      grain(g, 0, 0, S, S, base, r, true);
-      for (let k = 0; k < 18; k++) grain(g, 0, r() * S, S, 3, base, r, true);
-    });
-  }
-  function doorTex(kind){
-    const [, base] = WOOD_OPTS[kind] || WOOD_OPTS.roble;
-    return canvasTex('door-' + kind, 256, (g, S) => {
+  function doorTex(base, withGrain){
+    return canvasTex('door-' + base + withGrain, 256, (g, S) => {
       const r = rng(99);
-      if (kind === 'blanco'){ g.fillStyle = base; g.fillRect(0, 0, S, S); } else grain(g, 0, 0, S, S, base, r, false);
-      // Dos tableros sobrerrelieve: luz arriba-izquierda, sombra abajo-derecha
+      if (withGrain) grain(g, 0, 0, S, S, base, r, false); else { g.fillStyle = base; g.fillRect(0, 0, S, S); }
       const panel = (x, y, w, h) => {
         g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3; g.beginPath(); g.moveTo(x, y + h); g.lineTo(x, y); g.lineTo(x + w, y); g.stroke();
         g.strokeStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.moveTo(x + w, y); g.lineTo(x + w, y + h); g.lineTo(x, y + h); g.stroke();
@@ -1781,25 +1825,14 @@ main{overflow:auto;padding:24px;display:flex}
       panel(S * .18, S * .53, S * .64, S * .4);
     });
   }
-  function roofTex(kind){
-    const [, base] = ROOF_OPTS[kind] || ROOF_OPTS.terracota;
-    return canvasTex('roof-' + kind, 256, (g, S) => {
-      const r = rng(5);
-      g.fillStyle = tint(base, 0.6); g.fillRect(0, 0, S, S);
-      const rows = 8, cols = 8, rh = S / rows, cw = S / cols;
-      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++){
-        const ox = (y % 2) * cw / 2;
-        for (const dx of [0, -S]){
-          const x0 = x * cw + ox + dx;
-          const gr = g.createLinearGradient(x0, 0, x0 + cw, 0);
-          const c1 = tint(base, 0.8 + r() * 0.1), c2 = tint(base, 1.1 + r() * 0.1);
-          gr.addColorStop(0, c1); gr.addColorStop(0.5, c2); gr.addColorStop(1, c1);
-          g.fillStyle = gr;
-          g.beginPath(); g.moveTo(x0 + 1, y * rh); g.lineTo(x0 + cw - 1, y * rh);
-          g.quadraticCurveTo(x0 + cw - 1, y * rh + rh, x0 + cw / 2, y * rh + rh + 2); g.quadraticCurveTo(x0 + 1, y * rh + rh, x0 + 1, y * rh); g.fill();
-        }
-      }
-    });
+  // Miniatura de una textura para el panel
+  const THUMBS = {};
+  function texThumb(id){
+    if (THUMBS[id]) return THUMBS[id];
+    const src = libTex(id).image, c = document.createElement('canvas');
+    c.width = c.height = 48;
+    c.getContext('2d').drawImage(src, 0, 0, src.width / 2, src.height / 2, 0, 0, 48, 48);
+    return (THUMBS[id] = c.toDataURL());
   }
 
   // ---- Materiales (cacheados en v3.mats) ----
@@ -1853,6 +1886,7 @@ main{overflow:auto;padding:24px;display:flex}
   function flushBatch(){
     const v = new THREE.Vector3(), nm = new THREE.Matrix3();
     for (const [mat, list] of BATCH){
+      const wuv = mat.userData.worldUV || 0;
       let total = 0;
       for (const [g] of list) total += g.attributes.position.count;
       const pos = new Float32Array(total * 3), nor = new Float32Array(total * 3), uv = new Float32Array(total * 2);
@@ -1865,7 +1899,13 @@ main{overflow:auto;padding:24px;display:flex}
           pos[(o + k) * 3] = v.x; pos[(o + k) * 3 + 1] = v.y; pos[(o + k) * 3 + 2] = v.z;
           v.set(N[k * 3], N[k * 3 + 1], N[k * 3 + 2]).applyMatrix3(nm).normalize();
           nor[(o + k) * 3] = v.x; nor[(o + k) * 3 + 1] = v.y; nor[(o + k) * 3 + 2] = v.z;
-          if (U){ uv[(o + k) * 2] = U[k * 2]; uv[(o + k) * 2 + 1] = U[k * 2 + 1]; }
+          if (wuv){
+            const ax = Math.abs(v.x), ay = Math.abs(v.y), az = Math.abs(v.z);
+            const px = pos[(o + k) * 3], py = pos[(o + k) * 3 + 1], pz = pos[(o + k) * 3 + 2];
+            if (ay >= ax && ay >= az){ uv[(o + k) * 2] = px / wuv; uv[(o + k) * 2 + 1] = -pz / wuv; }
+            else if (ax >= az){ uv[(o + k) * 2] = pz / wuv; uv[(o + k) * 2 + 1] = py / wuv; }
+            else { uv[(o + k) * 2] = px / wuv; uv[(o + k) * 2 + 1] = py / wuv; }
+          } else if (U){ uv[(o + k) * 2] = U[k * 2]; uv[(o + k) * 2 + 1] = U[k * 2 + 1]; }
         }
         o += n;
       }
@@ -1882,24 +1922,48 @@ main{overflow:auto;padding:24px;display:flex}
 
   // ---- Materiales de la escena según la configuración ----
   let MT = null;
+  // Material de un acabado. 'surface' proyecta la textura en escala real (paredes, pisos); 'object' la estira sobre la pieza.
+  function finishMat(spec, purpose, extra){
+    if (!spec || spec.t === 'color'){
+      const c = spec ? spec.c : '#cccccc';
+      return matC(c, Object.assign({ roughness: purpose === 'surface' ? .9 : .6 }, extra || {}));
+    }
+    const d = TEXLIB[spec.id] || TEXLIB['madera-clara'];
+    const m = matT('f-' + spec.id + '-' + purpose, libTex(spec.id), Object.assign({ roughness:d.rough }, extra || {}));
+    if (purpose === 'surface') m.userData.worldUV = d.tile;
+    return m;
+  }
+  const specKey = spec => !spec ? 'none' : spec.t === 'color' ? spec.c : 'tex:' + spec.id;
   function sceneMats(){
-    const c = mat3d();
-    const wood = matT('wood-' + c.wood, woodTex(c.wood), { roughness:.6 });
-    const glass = matC('#9ec9e8', { transparent:true, opacity:.28, roughness:.05 });
-    glass.userData.noCast = true;
+    const c = mat3d(), S = c.s;
+    const glass = matC('#9ec9e8', { transparent:true, opacity:.28, roughness:.05 }); glass.userData.noCast = true;
     const water = matC('#2f7fb8', { roughness:.12, metalness:.1 }); water.userData.noCast = true;
+    // Puertas: con tableros dibujados sobre el color o la madera elegidos
+    const wd = S.madera;
+    const door = wd.t === 'color' ? matT('door-c' + wd.c, doorTex(wd.c, false), { roughness:.6 })
+      : (TEXLIB[wd.id] && TEXLIB[wd.id].base ? matT('door-t' + wd.id, doorTex(TEXLIB[wd.id].base, true), { roughness:.6 }) : finishMat(wd, 'object'));
+    const fab = S.tapizados;
+    const fabric2 = fab.t === 'color' ? matC(toHex(tint(fab.c, 1.22)), { roughness:.95 }) : finishMat(fab, 'object', { roughness:.95 });
     return {
       cfg:c,
-      wall:matC(c.wall, { roughness:.92 }), fence:matC('#77796f'), slab:matC('#9a958e'), curb:matC('#c4c1b8'),
+      wallMat: spec => finishMat(spec, 'surface', { roughness:.92 }),
+      floorMat: spec => finishMat(spec, 'surface'),
+      fence:matC('#77796f'), slab:matC('#9a958e'), curb:matC('#c4c1b8'),
       glass, water, frame:matC('#d6dade', { roughness:.4, metalness:.3 }), trim:matC('#f1efe9', { roughness:.6 }),
-      wood, door:matT('door-' + c.wood, doorTex(c.wood), { roughness:.6 }),
-      fabric:matC(c.fabric, { roughness:.95 }), fabric2:matC(tint(c.fabric, 1.25).replace(/rgb\((\d+),(\d+),(\d+)\)/, (_, r, g, b) => '#' + [r, g, b].map(x => (+x).toString(16).padStart(2, '0')).join('')), { roughness:.95 }),
-      linen:matC('#efebe3', { roughness:.95 }), white:matC('#f4f4f1', { roughness:.3 }), cab:matC('#e7e4de', { roughness:.5 }),
-      top:matC('#3a3c3f', { roughness:.35 }), black:matC('#1b1c1f', { roughness:.45 }), steel:matC('#b9bec4', { roughness:.28, metalness:.7 }),
+      zocalo:finishMat(S.zocalos, 'surface', { roughness:.5 }),
+      boiserie:finishMat(S.boiserie, 'surface', { roughness:.55 }),
+      // Sombra del relieve de los marcos: el mismo tono, apenas más oscuro
+      boiserieShade: S.boiserie.t === 'color' ? matC(toHex(tint(S.boiserie.c, .8)), { roughness:.6 }) : finishMat(S.boiserie, 'surface', { roughness:.55, color:lin('#bdbdbd') }),
+      wood:finishMat(S.madera, 'object'), door,
+      fabric:finishMat(fab, 'object', { roughness:.95 }), fabric2,
+      linen:matC('#efebe3', { roughness:.95 }), white:matC('#f4f4f1', { roughness:.3 }),
+      cab:finishMat(S['muebles-cocina'], 'object', { roughness:.5 }), top:finishMat(S.mesadas, 'object', { roughness:.35 }),
+      black:matC('#1b1c1f', { roughness:.45 }), steel:matC('#b9bec4', { roughness:.28, metalness:.7 }),
       darkglass:matC('#33404b', { roughness:.15 }), green:matC('#4d8a45', { flatShading:true, roughness:.9 }), green2:matC('#3d7a3a', { flatShading:true, roughness:.9 }),
       trunk:matC('#6b4a2f', { roughness:.9 }), pot:matC('#b5653d', { roughness:.8 }), screen:matC('#8fa6bd', { roughness:.6 }),
       heater:matC('#8c8c8c', { roughness:.5, metalness:.3 }), reja:matC('#16181b', { roughness:.5, metalness:.4 }),
-      grass:matT('grass', grassTex(), { roughness:.95 }), roof:matT('roof-' + c.roof, roofTex(c.roof), { roughness:.8, side:THREE.DoubleSide })
+      grass:matT('grass', grassTex(), { roughness:.95 }),
+      roof:finishMat(S.techo, 'object', { side:THREE.DoubleSide, roughness:.8 })
     };
   }
 
@@ -2181,61 +2245,121 @@ main{overflow:auto;padding:24px;display:flex}
     } else top(interior0, H3.wall);
   }
 
-  // ---- Planta: pisos, paredes, aberturas, muebles ----
+  // ---- Planta: pisos, paredes (una mitad por cara), zócalos, aberturas y muebles ----
   function buildFloor3D(p, base, level, showFurn){
-    const R = st.rows, C = st.cols, m = st.meters, t = H3.thick / 2, T = MT;
+    const R = st.rows, C = st.cols, m = st.meters, t = H3.thick / 2, T = MT, cfg = T.cfg;
     const info = regionsOf(p);
-    const ext = (i, j) => (i < 0 || j < 0 || i >= R || j >= C) ? true : info.regions[info.id[i][j]].ext;
-    const c = T.cfg;
-    const fl = floorTex(c.floor), wet = floorTex(c.wet);
-    const matFloor = matT('floor-' + c.floor, fl.tex, { roughness:.55 }), matWet = matT('floor-' + c.wet, wet.tex, { roughness:.35 });
+    const regAt = (i, j) => (i < 0 || j < 0 || i >= R || j >= C) ? null : info.regions[info.id[i][j]];
+    const ext = (i, j) => { const r = regAt(i, j); return !r || r.ext; };
+    const roomSpec = (name, kind) => (name && cfg.rooms[name] && cfg.rooms[name][kind]) || null;
+    // Acabado de la cara de una pared que mira hacia la celda (i, j)
+    const faceSpec = (i, j) => {
+      const r = regAt(i, j);
+      if (!r || r.ext) return cfg.s['paredes-ext'];
+      return roomSpec(r.name, 'paredes') || cfg.s.paredes;
+    };
+    const floorSpec = r => roomSpec(r.name, 'piso') || (isWet(r.name) ? cfg.s.humedos : cfg.s.pisos);
     const interior = Array.from({ length:R }, () => new Array(C).fill(false));
-    // Pisos por tramos horizontales del mismo material
+    // Pisos: tramos horizontales con el mismo acabado
     for (let i = 0; i < R; i++){
       let j = 0;
       while (j < C){
-        const reg = info.regions[info.id[i][j]];
-        const kind = reg.water ? 'water' : reg.ext ? null : (isWet(reg.name) ? 'wet' : 'floor');
-        if (!kind){ j++; continue; }
-        const j0 = j;
-        while (j < C){
-          const r2 = info.regions[info.id[i][j]];
-          if ((r2.water ? 'water' : r2.ext ? null : (isWet(r2.name) ? 'wet' : 'floor')) !== kind) break;
-          if (kind !== 'water') interior[i][j] = true;
-          j++;
-        }
-        if (kind === 'water'){ setFrame(0, 0, 0, 0); pbox(j0 * m, base - .03, i * m, j * m, base + .01, (i + 1) * m, T.water); continue; }
+        const reg = regAt(i, j);
+        if (reg.water){ setFrame(0, 0, 0, 0); pbox(j * m, base - .03, i * m, (j + 1) * m, base + .01, (i + 1) * m, T.water); j++; continue; }
+        if (reg.ext){ j++; continue; }
+        const spec = floorSpec(reg), key = specKey(spec), j0 = j;
+        while (j < C){ const r2 = regAt(i, j); if (r2.ext || r2.water || specKey(floorSpec(r2)) !== key) break; interior[i][j] = true; j++; }
         if (level > 0){ setFrame(0, 0, 0, 0); pbox(j0 * m, base - .2, i * m, j * m, base, (i + 1) * m, T.slab); }
-        quad(j0 * m, i * m, j * m, (i + 1) * m, base + .012, kind === 'wet' ? wet.tile : fl.tile, kind === 'wet' ? matWet : matFloor);
+        const tile = spec.t === 'tex' && TEXLIB[spec.id] ? TEXLIB[spec.id].tile : 1;
+        quad(j0 * m, i * m, j * m, (i + 1) * m, base + .012, tile, T.floorMat(spec));
       }
     }
     // Bordes
     const cap = $('v3dLow').checked ? 1.1 : H3.wall;
+    const zoc = cfg.zocalos && cap > .12;
     setFrame(0, 0, 0, 0);
-    const box3 = (horiz, fixed, a0, a1, y0, y1, mat, half) => {
+    // Caja sobre el borde; side -1 = mitad hacia la celda anterior, +1 = hacia la siguiente, 0 = completa
+    const box3 = (horiz, fixed, a0, a1, y0, y1, mat, half, side) => {
       y1 = Math.min(y1, cap); if (y1 <= y0) return;
       const hh = half == null ? t : half;
-      if (horiz) pbox(a0, base + y0, fixed - hh, a1, base + y1, fixed + hh, mat);
-      else pbox(fixed - hh, base + y0, a0, fixed + hh, base + y1, a1, mat);
+      const lo = side === 1 ? fixed : fixed - hh, hi = side === -1 ? fixed : fixed + hh;
+      if (horiz) pbox(a0, base + y0, lo, a1, base + y1, hi, mat);
+      else pbox(lo, base + y0, a0, hi, base + y1, a1, mat);
     };
-    const line = (horiz, fixed, n, valAt, outAt) => {
+    // Pared de dos caras con acabados independientes y zócalos en las caras interiores
+    // Pieza sobre la cara de una pared: side -1/+1, desde d0 hasta d1 metros de separación de la cara
+    const faceBox = (horiz, fixed, side, b0, b1, y0, y1, d0, d1, mat) => {
+      y1 = Math.min(y1, cap);
+      if (b1 <= b0 || y1 <= y0) return;
+      const f0 = side < 0 ? fixed - t - d1 : fixed + t + d0, f1 = side < 0 ? fixed - t - d0 : fixed + t + d1;
+      if (horiz) pbox(b0, base + y0, f0, b1, base + y1, f1, mat); else pbox(f0, base + y0, b0, f1, base + y1, b1, mat);
+    };
+    const boOn = name => { const r = cfg.boiserie.rooms[name]; return r === true || (r !== false && cfg.boiserie.all); };
+    // Boiserie: revestimiento, moldura superior y marcos en relieve de unos 65 cm
+    const boiserie = (horiz, fixed, side, b0, b1, H) => {
+      const M = T.boiserie, Sh = T.boiserieShade;
+      faceBox(horiz, fixed, side, b0, b1, 0, H, 0, .01, M);
+      faceBox(horiz, fixed, side, b0, b1, H - .05, H, .01, .035, M);
+      faceBox(horiz, fixed, side, b0, b1, H - .07, H - .05, .01, .022, M);
+      faceBox(horiz, fixed, side, b0, b1, H - .082, H - .07, .01, .0115, Sh);
+      const len = b1 - b0, n = Math.max(1, Math.round(len / .65)), pw = len / n;
+      const yb = .2, yt = H - .15;
+      if (yt - yb < .15) return;
+      for (let k = 0; k < n; k++){
+        const p0 = b0 + k * pw + .09, p1 = b0 + (k + 1) * pw - .09;
+        if (p1 - p0 < .12) continue;
+        faceBox(horiz, fixed, side, p0, p1, yb, yb + .03, .01, .022, M);
+        faceBox(horiz, fixed, side, p0, p1, yt - .03, yt, .01, .022, M);
+        faceBox(horiz, fixed, side, p0, p0 + .03, yb, yt, .01, .022, M);
+        faceBox(horiz, fixed, side, p1 - .03, p1, yb, yt, .01, .022, M);
+        // Sombras interiores del marco
+        faceBox(horiz, fixed, side, p0 + .03, p1 - .03, yt - .042, yt - .03, .01, .0115, Sh);
+        faceBox(horiz, fixed, side, p0 + .03, p0 + .04, yb + .03, yt - .03, .01, .0115, Sh);
+        faceBox(horiz, fixed, side, p1 - .04, p1 - .03, yb + .03, yt - .03, .01, .0115, Sh);
+        faceBox(horiz, fixed, side, p0 + .03, p1 - .03, yb + .03, yb + .036, .01, .0115, Sh);
+      }
+    };
+    const wall2 = (horiz, fixed, a0, a1, y0, y1, sA, sB, inA, inB, withZoc, names, kind) => {
+      box3(horiz, fixed, a0, a1, y0, y1, T.wallMat(sA), t, -1);
+      box3(horiz, fixed, a0, a1, y0, y1, T.wallMat(sB), t, 1);
+      if (withZoc && y0 === 0 && names){
+        const H = kind === 'sill' ? Math.min(cfg.boiserie.h, H3.sill - .02) : cfg.boiserie.h;
+        const b0 = kind === 'sill' ? a0 : a0 + t, b1 = kind === 'sill' ? a1 : a1 - t;
+        if (inA && boOn(names[0])) boiserie(horiz, fixed, -1, b0, b1, H);
+        if (inB && boOn(names[1])) boiserie(horiz, fixed, 1, b0, b1, H);
+      }
+      if (withZoc && zoc && y0 === 0){
+        const zt = .015, zh = .1;
+        if (inA){ if (horiz) pbox(a0, base, fixed - t - zt, a1, base + zh, fixed - t, T.zocalo); else pbox(fixed - t - zt, base, a0, fixed - t, base + zh, a1, T.zocalo); }
+        if (inB){ if (horiz) pbox(a0, base, fixed + t, a1, base + zh, fixed + t + zt, T.zocalo); else pbox(fixed + t, base, a0, fixed + t + zt, base + zh, a1, T.zocalo); }
+      }
+    };
+    const line = (horiz, fixed, n, valAt, cellA, cellB) => {
+      const out = k => ext(...cellA(k)) && ext(...cellB(k));
+      const boKey = (i, j) => { const r = regAt(i, j); return r && !r.ext && boOn(r.name) ? 'b' : '-'; };
+      const sidesKey = k => specKey(faceSpec(...cellA(k))) + '|' + specKey(faceSpec(...cellB(k))) + '|' + ext(...cellA(k)) + '|' + ext(...cellB(k)) + '|' + boKey(...cellA(k)) + boKey(...cellB(k));
       let k = 0;
       while (k < n){
-        const val = valAt(k), out = outAt(k);
+        const val = valAt(k), o = out(k);
         if (val === 7){ setFrame(0, 0, 0, 0); bars(horiz, fixed, k * m, (k + 1) * m, base, Math.min(level > 0 ? 1.0 : H3.fence, cap)); setFrame(0, 0, 0, 0); k++; continue; }
-        if (!val || (out && level > 0)){ k++; continue; }
+        if (!val || (o && level > 0)){ k++; continue; }
         if (val === 1){
-          const k0 = k;
-          while (k < n && valAt(k) === 1 && outAt(k) === out) k++;
-          box3(horiz, fixed, k0 * m - t, k * m + t, 0, out ? H3.fence : H3.wall, out ? T.fence : T.wall);
+          const k0 = k, sk = sidesKey(k);
+          while (k < n && valAt(k) === 1 && out(k) === o && sidesKey(k) === sk) k++;
+          if (o){ box3(horiz, fixed, k0 * m - t, k * m + t, 0, H3.fence, T.fence); continue; }
+          const [ai, aj] = cellA(k0), [bi, bj] = cellB(k0);
+          wall2(horiz, fixed, k0 * m - t, k * m + t, 0, H3.wall, faceSpec(ai, aj), faceSpec(bi, bj), !ext(ai, aj), !ext(bi, bj), true,
+                [regAt(ai, aj) && regAt(ai, aj).name, regAt(bi, bj) && regAt(bi, bj).name], 'wall');
           continue;
         }
         const a0 = k * m, a1 = (k + 1) * m;
-        if (out){ if (val === 3) box3(horiz, fixed, a0, a1, 0, .12, T.curb, .1); }
-        else if (isDoor(val)) box3(horiz, fixed, a0, a1, H3.door, H3.wall, T.wall);
+        const [ai, aj] = cellA(k), [bi, bj] = cellB(k);
+        const sA = faceSpec(ai, aj), sB = faceSpec(bi, bj), inA = !ext(ai, aj), inB = !ext(bi, bj);
+        if (o){ if (val === 3) box3(horiz, fixed, a0, a1, 0, .12, T.curb, .1); }
+        else if (isDoor(val)) wall2(horiz, fixed, a0, a1, H3.door, H3.wall, sA, sB, inA, inB, false);
         else if (val === 3){
-          box3(horiz, fixed, a0, a1, 0, H3.sill, T.wall);
-          box3(horiz, fixed, a0, a1, H3.lintel, H3.wall, T.wall);
+          wall2(horiz, fixed, a0, a1, 0, H3.sill, sA, sB, inA, inB, true, [regAt(ai, aj) && regAt(ai, aj).name, regAt(bi, bj) && regAt(bi, bj).name], 'sill');
+          wall2(horiz, fixed, a0, a1, H3.lintel, H3.wall, sA, sB, inA, inB, false);
           box3(horiz, fixed, a0, a1, H3.sill, H3.lintel, T.glass, .012);
           box3(horiz, fixed, a0, a0 + .035, H3.sill, H3.lintel, T.frame, .035);
           box3(horiz, fixed, a1 - .035, a1, H3.sill, H3.lintel, T.frame, .035);
@@ -2245,10 +2369,9 @@ main{overflow:auto;padding:24px;display:flex}
         k++;
       }
     };
-    for (let i = 0; i <= R; i++) line(true, i * m, C, j => p.h[i][j], j => ext(i - 1, j) && ext(i, j));
-    for (let j = 0; j <= C; j++) line(false, j * m, R, i => p.v[i][j], i => ext(i, j - 1) && ext(i, j));
+    for (let i = 0; i <= R; i++) line(true, i * m, C, j => p.h[i][j], j => [i - 1, j], j => [i, j]);
+    for (let j = 0; j <= C; j++) line(false, j * m, R, i => p.v[i][j], i => [i, j - 1], i => [i, j]);
     if (cap >= H3.door) buildDoors(p, base, (horiz, line2, k0) => horiz ? (ext(line2 - 1, k0) && ext(line2, k0)) : (ext(k0, line2 - 1) && ext(k0, line2)));
-    // Pérgolas
     if (level === 0) for (const r of info.regions) if (r.closed && /p[eé]rgola/i.test(r.name)) pergola(r.cells, base);
     if (showFurn) buildFurniture(p, base, info);
     return interior;
@@ -2277,24 +2400,97 @@ main{overflow:auto;padding:24px;display:flex}
     v3.dirty = true;
   }
 
-  // ---- Panel de materiales ----
-  function renderMatPanel(){
-    const c = mat3d();
-    const opts = (obj, sel, label) => Object.entries(obj).map(([k, v]) => `<option value="${k}"${k === sel ? ' selected' : ''}>${Array.isArray(v) ? v[0] : v}</option>`).join('');
-    $('v3dMat').innerHTML = `
-      <label class="field">Piso de los ambientes<select data-k="floor">${opts(FLOOR_OPTS, c.floor)}</select></label>
-      <label class="field">Piso de baños, lavadero y cocina cerrada<select data-k="wet">${opts(FLOOR_OPTS, c.wet)}</select></label>
-      <label class="field">Color de las paredes<input type="color" data-k="wall" value="${c.wall}"></label>
-      <label class="field">Tejas del techo<select data-k="roof">${opts(ROOF_OPTS, c.roof)}</select></label>
-      <label class="field">Madera de muebles y puertas<select data-k="wood">${opts(WOOD_OPTS, c.wood)}</select></label>
-      <label class="field">Tapizados (cama y sillones)<input type="color" data-k="fabric" value="${c.fabric}"></label>
-      <button type="button" id="v3dMatReset">Restablecer</button>`;
-    $('v3dRoof').checked = !!c.techo;
+  // ---- Panel de materiales: elegir el sector y aplicarle cualquier acabado ----
+  function roomNames(){
+    const names = new Set();
+    for (const p of st.pisos){ if (!p) continue; for (const r of regionsOf(p).regions) if (r.closed && !r.ext && r.name) names.add(r.name); }
+    return [...names].sort((a, b) => a.localeCompare(b, 'es'));
   }
-  function setMat3d(k, val){
-    st.mat3d = Object.assign({}, st.mat3d || {}, { [k]:val });
+  function targetSpec(target, cfg){
+    if (target.startsWith('room:')){
+      const [, kind, ...rest] = target.split(':'), name = rest.join(':');
+      const own = cfg.rooms[name] && cfg.rooms[name][kind];
+      return { spec: own || (kind === 'piso' ? (isWet(name) ? cfg.s.humedos : cfg.s.pisos) : cfg.s.paredes), own: !!own, room:true };
+    }
+    return { spec: cfg.s[target], own:true, room:false };
+  }
+  function normalizeMat3d(){
+    const c = mat3d();
+    st.mat3d = { s:c.s, rooms:JSON.parse(JSON.stringify(c.rooms)), techo:c.techo, zocalos:c.zocalos, boiserie:JSON.parse(JSON.stringify(c.boiserie)) };
+    return st.mat3d;
+  }
+  function setSpec(target, spec){
+    const s = normalizeMat3d();
+    if (target.startsWith('room:')){
+      const [, kind, ...rest] = target.split(':'), name = rest.join(':');
+      s.rooms[name] = Object.assign({}, s.rooms[name] || {});
+      if (spec) s.rooms[name][kind] = spec; else delete s.rooms[name][kind];
+      if (!Object.keys(s.rooms[name]).length) delete s.rooms[name];
+    } else s.s[target] = spec;
     save(false);
     if (v3.renderer) build3D();
+    renderMatPanel();
+  }
+  function setMat3d(k, val){
+    const s = normalizeMat3d();
+    s[k] = val;
+    save(false);
+    if (v3.renderer) build3D();
+  }
+  const BO_HEIGHTS = [[0.9, '0,9 m'], [1.0, '1 m (un tercio)'], [1.2, '1,2 m'], [1.5, '1,5 m'], [1.95, '1,95 m (tres cuartos)']];
+  function boControls(cfg, esc){
+    const t = v3.matTarget, bo = cfg.boiserie;
+    const hSel = `<label class="field">Altura de la boiserie<select id="boH">${BO_HEIGHTS.map(([v, n]) => `<option value="${v}"${Math.abs(v - bo.h) < .01 ? ' selected' : ''}>${n}</option>`).join('')}</select></label>`;
+    if (t === 'paredes' || t === 'boiserie')
+      return `<div class="mbox"><label class="check"><input type="checkbox" id="boAll"${bo.all ? ' checked' : ''}>Boiserie en todas las paredes interiores</label>${hSel}</div>`;
+    if (t.startsWith('room:paredes:')){
+      const name = t.slice('room:paredes:'.length), r = bo.rooms[name];
+      const v = r === true ? 'si' : r === false ? 'no' : 'gen';
+      return `<div class="mbox"><label class="field">Boiserie en ${esc(name)}<select id="boRoom">
+        <option value="gen"${v === 'gen' ? ' selected' : ''}>Como el general (${bo.all ? 'sí' : 'no'})</option>
+        <option value="si"${v === 'si' ? ' selected' : ''}>Sí</option><option value="no"${v === 'no' ? ' selected' : ''}>No</option></select></label>${hSel}</div>`;
+    }
+    return '';
+  }
+  function setBoiserie(fn){
+    const s = normalizeMat3d();
+    fn(s.boiserie);
+    save(false);
+    if (v3.renderer) build3D();
+    renderMatPanel();
+  }
+  function renderMatPanel(){
+    const cfg = mat3d();
+    const names = roomNames();
+    const valid = new Set([...Object.keys(SECTORS), ...names.flatMap(n => ['room:piso:' + n, 'room:paredes:' + n])]);
+    if (!v3.matTarget || !valid.has(v3.matTarget)) v3.matTarget = 'pisos';
+    const esc = x => String(x).replace(/[&<>"]/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' })[ch]);
+    let opts = '<optgroup label="General">' + Object.entries(SECTORS).map(([k, [n]]) => `<option value="${k}"${k === v3.matTarget ? ' selected' : ''}>${n}</option>`).join('') + '</optgroup>';
+    if (names.length){
+      opts += '<optgroup label="Por ambiente">';
+      for (const n of names) for (const kind of ['piso', 'paredes']){
+        const v = `room:${kind}:${n}`;
+        opts += `<option value="${esc(v)}"${v === v3.matTarget ? ' selected' : ''}>${kind === 'piso' ? 'Piso' : 'Paredes'} — ${esc(n)}</option>`;
+      }
+      opts += '</optgroup>';
+    }
+    const cur = targetSpec(v3.matTarget, cfg);
+    const curName = cur.spec.t === 'color' ? cur.spec.c.toUpperCase() : (TEXLIB[cur.spec.id] ? TEXLIB[cur.spec.id].n : cur.spec.id);
+    const chip = cur.spec.t === 'color' ? `background:${cur.spec.c}` : `background-image:url(${texThumb(cur.spec.id)})`;
+    const sel = x => specKey(cur.spec) === x ? ' sel' : '';
+    $('v3dMat').innerHTML = `
+      <label class="check"><input type="checkbox" id="matZoc"${cfg.zocalos ? ' checked' : ''}>Zócalos</label>
+      <label class="field">Qué modificar<select id="matTarget">${opts}</select></label>
+      <div class="mcur"><span class="mchip" style="${chip}"></span><span>${cur.room && !cur.own ? 'Usa el general: ' : ''}${esc(curName)}</span>
+        ${cur.room && cur.own ? '<button type="button" id="matInherit">Usar el general</button>' : ''}</div>
+      ${boControls(cfg, esc)}
+      <div class="mlbl">Texturas</div>
+      <div class="mgrid">${Object.entries(TEXLIB).map(([id, d]) => `<button type="button" class="msw${sel('tex:' + id)}" data-tex="${id}" title="${esc(d.n)}" style="background-image:url(${texThumb(id)})"></button>`).join('')}</div>
+      <div class="mlbl">Colores</div>
+      <div class="mgrid">${COLOR_SWATCHES.map(c => `<button type="button" class="msw${sel(c)}" data-col="${c}" title="${c.toUpperCase()}" style="background:${c}"></button>`).join('')}
+        <label class="mcustom" title="Elegir otro color"><input type="color" id="matCustom" value="${cur.spec.t === 'color' ? cur.spec.c : '#888888'}">+</label></div>
+      <button type="button" id="v3dMatReset">Restablecer todo</button>`;
+    $('v3dRoof').checked = !!cfg.techo;
   }
 
   function resetCamera3D(){
@@ -2583,9 +2779,25 @@ main{overflow:auto;padding:24px;display:flex}
     panel.hidden = !open;
     $('v3dMatBtn').setAttribute('aria-expanded', String(open));
   });
-  $('v3dMat').addEventListener('change', e => { const k = e.target.dataset.k; if (k) setMat3d(k, e.target.value); });
-  $('v3dMat').addEventListener('input', e => { const k = e.target.dataset.k; if (k && e.target.type === 'color'){ clearTimeout(v3.colTimer); v3.colTimer = setTimeout(() => setMat3d(k, e.target.value), 150); } });
-  $('v3dMat').addEventListener('click', e => { if (e.target.id === 'v3dMatReset'){ st.mat3d = {}; save(false); renderMatPanel(); if (v3.renderer) build3D(); } });
+  $('v3dMat').addEventListener('change', e => {
+    if (e.target.id === 'matTarget'){ v3.matTarget = e.target.value; renderMatPanel(); }
+    else if (e.target.id === 'matZoc') setMat3d('zocalos', e.target.checked);
+    else if (e.target.id === 'boAll') setBoiserie(bo => { bo.all = e.target.checked; });
+    else if (e.target.id === 'boH') setBoiserie(bo => { bo.h = parseFloat(e.target.value); });
+    else if (e.target.id === 'boRoom'){
+      const name = v3.matTarget.slice('room:paredes:'.length), val = e.target.value;
+      setBoiserie(bo => { if (val === 'gen') delete bo.rooms[name]; else bo.rooms[name] = val === 'si'; });
+    }
+    else if (e.target.id === 'matCustom') setSpec(v3.matTarget, { t:'color', c:e.target.value });
+  });
+  $('v3dMat').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.tex) setSpec(v3.matTarget, { t:'tex', id:b.dataset.tex });
+    else if (b.dataset.col) setSpec(v3.matTarget, { t:'color', c:b.dataset.col });
+    else if (b.id === 'matInherit') setSpec(v3.matTarget, null);
+    else if (b.id === 'v3dMatReset'){ st.mat3d = { techo: mat3d().techo }; save(false); renderMatPanel(); if (v3.renderer) build3D(); }
+  });
 
   // ---- Exportar como texto (ASCII) ----
   // Pensado para pegar en otras IA: dibujo con reglas, ambientes numerados y leyendas.
