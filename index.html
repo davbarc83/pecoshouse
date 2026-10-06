@@ -134,6 +134,14 @@ main{overflow:auto;padding:24px;display:flex}
 .plansvg .selc{fill:var(--hover);fill-opacity:.1;stroke:var(--hover);stroke-width:1.5;stroke-dasharray:4 3}
 .toast{position:fixed;left:50%;top:calc(90px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:40;background:var(--ink);color:var(--sheet);padding:8px 14px;border-radius:6px;font-size:.88rem;box-shadow:0 6px 20px rgba(0,0,0,.35);pointer-events:none}
 .toast[hidden]{display:none}
+.syncbanner{position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:45;max-width:min(430px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--hover);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.45);font-size:.9rem}
+.syncbanner[hidden]{display:none}
+.syncbanner .bbtns{display:flex;gap:6px;flex-wrap:wrap}
+details.syhelp{font-size:.85rem}
+details.syhelp > summary{cursor:pointer;color:var(--muted);padding:4px 0}
+details.syhelp ol{margin:6px 0;padding-left:18px;color:var(--muted);line-height:1.5}
+details.syhelp code{font-size:.8rem}
+details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px solid var(--border);border-radius:6px;font:11px/1.4 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all;max-height:220px;overflow:auto}
 .fseg{display:flex;gap:4px}
 .fseg button{flex:1;padding:6px 14px;font-weight:600;font-size:.88rem;white-space:nowrap}
 .fseg button.sel{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
@@ -269,6 +277,32 @@ main{overflow:auto;padding:24px;display:flex}
       </div>
     </details>
 
+    <details class="sec" data-sec="sync">
+      <summary>Sincronizar con Google Docs</summary>
+      <div class="body">
+        <label class="field">Enlace del documento<input id="syDoc" type="text" placeholder="https://docs.google.com/document/d/…" spellcheck="false" autocomplete="off"></label>
+        <label class="field">Espacio vinculado<select id="sySlot"></select></label>
+        <label class="field">Enlace del script (para poder guardar)<input id="syScript" type="text" placeholder="https://script.google.com/macros/s/…/exec" spellcheck="false" autocomplete="off"></label>
+        <label class="field">Clave del script<span class="row"><input id="syToken" type="text" spellcheck="false" autocomplete="off"><button type="button" id="syGenToken" title="Generar una clave">Generar</button></span></label>
+        <label class="check"><input type="checkbox" id="syAutoLoad">Cargar desde el documento al abrir</label>
+        <label class="check"><input type="checkbox" id="syAutoPush">Subir mis cambios automáticamente</label>
+        <div class="row"><button type="button" id="syLoad" class="primary">Cargar</button><button type="button" id="syPush">Subir</button></div>
+        <button type="button" id="syLink">Copiar enlace de configuración (otra PC)</button>
+        <p class="msg" id="syncStatus" role="status"></p>
+        <details class="syhelp">
+          <summary>Cómo habilitar el guardado (script de Google)</summary>
+          <ol>
+            <li>Abre el documento y ve a <strong>Extensiones → Apps Script</strong>.</li>
+            <li>Borra lo que haya, pega el script de abajo y guarda.</li>
+            <li><strong>Implementar → Nueva implementación → Aplicación web</strong>. Ejecutar como: <em>Yo</em>. Quién tiene acceso: <em>Cualquier persona</em>.</li>
+            <li>Autoriza los permisos (es tu propio script) y copia la URL que termina en <code>/exec</code> en el campo «Enlace del script».</li>
+          </ol>
+          <pre id="syScriptText"></pre>
+          <button type="button" id="syCopyScript">Copiar script</button>
+        </details>
+      </div>
+    </details>
+
     <div class="actions">
       <button id="undo" title="Ctrl+Z">Deshacer</button>
       <button id="clear" class="danger">Vaciar este piso</button>
@@ -333,6 +367,7 @@ main{overflow:auto;padding:24px;display:flex}
 </div>
 <div id="printArea" aria-hidden="true"></div>
 <div class="toast" id="toast" role="status" hidden></div>
+<div class="syncbanner" id="syncBanner" role="alert" hidden><span id="syncBannerText"></span><span class="bbtns" id="syncBannerBtns"></span></div>
 <div id="tip" aria-hidden="true"></div>
 
 <script>
@@ -616,6 +651,7 @@ main{overflow:auto;padding:24px;display:flex}
     if (touch !== false) st.editado = Date.now();
     try { localStorage.setItem(SLOT_KEY(slot), JSON.stringify(st)); } catch(e){}
     renderSlots();
+    try { schedulePush(); } catch(_){}
   }
 
   function switchSlot(n){
@@ -3075,6 +3111,245 @@ main{overflow:auto;padding:24px;display:flex}
   window.addEventListener('afterprint', () => { $('printArea').textContent = ''; });
   $('printBtn').addEventListener('click', () => { buildPrintArea(); window.print(); });
 
+  // ---- Sincronización con Google Docs ----
+  // El documento contiene un único código de plano. Se lee por su enlace de exportación (si el navegador lo permite)
+  // o a través de un script de Google Apps Script, que además permite guardar.
+  const SYNC_KEY = 'plano-grilla-sync';
+  const sync = Object.assign({ docUrl:'', scriptUrl:'', token:'', slot:1, autoLoad:true, autoPush:true,
+                               lastRemote:'', lastLocal:'', lastAt:0, preferRemote:false },
+                             (() => { try { return JSON.parse(localStorage.getItem(SYNC_KEY) || '{}'); } catch(_){ return {}; } })());
+  let syncBusy = false, syncApplying = false, syncTimer = null, syncLastCheck = 0;
+  const saveSync = () => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch(_){} };
+  const docIdOf = u => { const s = String(u || '').trim(); const m = s.match(/\/d\/([\w-]{20,})/); return m ? m[1] : (/^[\w-]{20,}$/.test(s) ? s : ''); };
+  const hashOf = str => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return String(h >>> 0); };
+  const extractCode = text => { const m = String(text || '').replace(/^\uFEFF/, '').match(/PLANO[1-4];\S+/); return m ? m[0] : ''; };
+  const genToken = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), b => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
+  const fail = msg => Object.assign(new Error(msg), { syncMsg:msg });
+  const syncErr = e => (e && e.syncMsg) || 'No se pudo conectar. Verifica la conexión a internet y los enlaces. Si la lectura directa del documento está bloqueada por el navegador, configura el script (ver instrucciones).';
+  const syncConfigured = () => !!(docIdOf(sync.docUrl) || sync.scriptUrl);
+
+  function setStatus(msg, kind){
+    const el = $('syncStatus'); if (!el) return;
+    el.textContent = msg; el.className = 'msg ' + (kind || '');
+  }
+  function showBanner(text, buttons){
+    $('syncBannerText').textContent = text;
+    const box = $('syncBannerBtns'); box.textContent = '';
+    for (const [label, fn] of buttons){
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.addEventListener('click', () => { $('syncBanner').hidden = true; fn(); });
+      box.appendChild(b);
+    }
+    $('syncBanner').hidden = false;
+  }
+
+  const slotIsEmpty = () => { const d = sync.slot === slot ? st : readSlot(sync.slot); return !d || slotSummary(d) === 'Vacío'; };
+  function localCode(){
+    if (sync.slot === slot) return encode();
+    const d = readSlot(sync.slot);
+    return d ? encode(d) : '';
+  }
+
+  async function fetchRemote(){
+    const id = docIdOf(sync.docUrl);
+    if (!id && !sync.scriptUrl) throw fail('Falta el enlace del documento.');
+    if (sync.scriptUrl){
+      const u = sync.scriptUrl + (sync.scriptUrl.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(sync.token || '') + '&_=' + Date.now();
+      const r = await fetch(u, { cache:'no-store' });
+      let j; try { j = await r.json(); } catch(_){ throw fail('El script no respondió con datos válidos. Revisa que esté implementado como aplicación web con acceso para «Cualquier persona».'); }
+      if (j.error) throw fail(j.error === 'clave' ? 'La clave no coincide con la del script.' : 'El script devolvió un error: ' + j.error);
+      return extractCode(j.code);
+    }
+    const r = await fetch(`https://docs.google.com/document/d/${id}/export?format=txt&_=${Date.now()}`, { cache:'no-store' });
+    if (!r.ok) throw fail('No se pudo leer el documento. Compártelo con «Cualquier persona con el enlace» (como lector, mínimo).');
+    return extractCode(await r.text());
+  }
+  async function pushRemote(code){
+    const r = await fetch(sync.scriptUrl, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body:JSON.stringify({ t:sync.token || '', code }) });
+    let j; try { j = await r.json(); } catch(_){ throw fail('El script no respondió con datos válidos.'); }
+    if (j.error) throw fail(j.error === 'clave' ? 'La clave no coincide con la del script.' : 'El script devolvió un error: ' + j.error);
+  }
+
+  const hora = () => new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
+  function markSynced(code){
+    sync.lastRemote = hashOf(code); sync.lastLocal = hashOf(localCode()); sync.lastAt = Date.now(); saveSync();
+  }
+  // Aplica el código del documento al espacio vinculado (con respaldo del contenido anterior)
+  function applyRemote(code){
+    const d = decode(code);
+    const n = sync.slot;
+    const prev = readSlot(n);
+    if (n === slot) syncPiso();
+    const before = n === slot ? JSON.parse(JSON.stringify(st)) : prev;
+    if (before && slotSummary(before) !== 'Vacío'){ try { localStorage.setItem(SLOT_KEY(n) + '-respaldo', JSON.stringify(before)); } catch(_){} }
+    syncApplying = true;
+    try {
+      if (n === slot){ snapshot(); applyPlan(d); syncInputs(); hover = null; render(); save(); }
+      else {
+        const p0 = prev || {};
+        const data = Object.assign(defaults(n), { nombre:p0.nombre || ('Plano ' + n), cell:p0.cell || 44, mat3d:d.mat3d || p0.mat3d,
+          rows:d.rows, cols:d.cols, meters:d.meters, pisos:d.pisos, piso:0, h:d.h, v:d.v, f:d.f, names:d.names, editado:Date.now() });
+        localStorage.setItem(SLOT_KEY(n), JSON.stringify(data));
+        renderSlots();
+      }
+    } finally { syncApplying = false; }
+    markSynced(code);
+    sync.preferRemote = false; saveSync();
+    setStatus('Plano cargado desde el documento a las ' + hora() + '.', 'ok');
+  }
+
+  function showConflict(remote){
+    const btns = [['Cargar la del documento', () => { try { applyRemote(remote); toast('Plano cargado desde Google Docs.'); } catch(e){ setStatus('El código del documento no es válido: ' + e.message, 'err'); } }]];
+    if (sync.scriptUrl) btns.push(['Subir la mía', () => syncPushNow(true)]);
+    btns.push(['Ahora no', () => setStatus('Hay versiones distintas entre este equipo y el documento.', 'err')]);
+    showBanner(`El documento y este equipo tienen versiones distintas del plano del espacio ${sync.slot}.`, btns);
+  }
+
+  async function syncCheck(auto){
+    if (syncBusy || !syncConfigured()) return;
+    syncBusy = true; setStatus('Consultando el documento…');
+    try {
+      const remote = await fetchRemote();
+      syncLastCheck = Date.now();
+      if (!remote){ setStatus('El documento todavía no contiene un código de plano.', auto ? '' : 'err'); return; }
+      const rh = hashOf(remote), lh = hashOf(localCode());
+      const first = !sync.lastRemote && !sync.lastLocal;
+      const remoteChanged = rh !== sync.lastRemote, localChanged = lh !== sync.lastLocal;
+      if (first){
+        if (slotIsEmpty() || sync.preferRemote){ applyRemote(remote); toast('Plano cargado desde Google Docs.'); }
+        else if (!remoteChanged || remote === localCode()){ markSynced(remote); setStatus('Sincronizado.', 'ok'); }
+        else showConflict(remote);
+      } else if (!remoteChanged && !localChanged){
+        setStatus('Sincronizado (revisado a las ' + hora() + ').', 'ok');
+      } else if (remoteChanged && !localChanged){
+        if (sync.autoLoad || !auto){ applyRemote(remote); toast('Se cargó una versión más nueva desde Google Docs.'); }
+        else showBanner('Hay una versión más nueva del plano en Google Docs.', [['Cargarla', () => applyRemote(remote)], ['Ahora no', () => {}]]);
+      } else if (!remoteChanged && localChanged){
+        setStatus('Hay cambios de este equipo sin subir al documento.');
+        if (sync.autoPush && sync.scriptUrl) schedulePush(0);
+      } else showConflict(remote);
+    } catch(e){ setStatus('Error: ' + syncErr(e), 'err'); }
+    finally { syncBusy = false; }
+  }
+
+  async function syncPushNow(force){
+    if (!sync.scriptUrl){ setStatus('Para guardar en el documento hace falta configurar el script (ver instrucciones).', 'err'); return; }
+    if (syncBusy){ schedulePush(1500); return; }
+    syncBusy = true;
+    try {
+      const code = localCode();
+      if (!code){ setStatus('El espacio vinculado no tiene un plano para subir.', 'err'); return; }
+      if (!force && hashOf(code) === sync.lastLocal){ setStatus('Sincronizado.', 'ok'); return; }
+      setStatus('Guardando en el documento…');
+      if (!force){
+        const remote = await fetchRemote();
+        if (remote && hashOf(remote) !== sync.lastRemote && remote !== code){ showConflict(remote); setStatus('El documento cambió desde la última sincronización.', 'err'); return; }
+      }
+      await pushRemote(code);
+      markSynced(code);
+      setStatus('Guardado en el documento a las ' + hora() + '.', 'ok');
+    } catch(e){ setStatus('Error: ' + syncErr(e), 'err'); }
+    finally { syncBusy = false; }
+  }
+  function schedulePush(delay){
+    if (syncApplying || !sync.autoPush || !sync.scriptUrl || slot !== sync.slot) return;
+    clearTimeout(syncTimer);
+    setStatus('Cambios pendientes de subir…');
+    syncTimer = setTimeout(() => syncPushNow(false), delay == null ? 5000 : delay);
+  }
+
+  async function syncLoadNow(){
+    if (!syncConfigured()){ setStatus('Pega primero el enlace del documento.', 'err'); return; }
+    if (syncBusy) return;
+    syncBusy = true; setStatus('Consultando el documento…');
+    try {
+      const remote = await fetchRemote();
+      if (!remote){ setStatus('El documento todavía no contiene un código de plano.', 'err'); return; }
+      const lh = hashOf(localCode());
+      const firstTime = !sync.lastLocal;
+      if (lh !== sync.lastLocal && remote !== localCode() && !slotIsEmpty() &&
+          !confirm((firstTime ? `Se reemplazará el plano actual del espacio ${sync.slot} por el del documento.` : `Hay cambios en el espacio ${sync.slot} que no se subieron y se reemplazarán por los del documento.`) +
+                   (sync.slot === slot ? ' Podrás volver con Deshacer.' : ' Se guarda una copia de respaldo en este navegador.') + ' ¿Continuar?')){ setStatus(''); return; }
+      applyRemote(remote); toast('Plano cargado desde Google Docs.');
+    } catch(e){ setStatus('Error: ' + syncErr(e), 'err'); }
+    finally { syncBusy = false; }
+  }
+
+  // ---- Interfaz ----
+  function scriptText(){
+    return `const DOC_ID = '${docIdOf(sync.docUrl) || 'ID_DEL_DOCUMENTO'}';
+const TOKEN = '${sync.token || 'CAMBIA_ESTA_CLAVE'}';
+
+function out_(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+function doGet(e) {
+  if ((e.parameter.t || '') !== TOKEN) return out_({ error: 'clave' });
+  return out_({ ok: true, code: DocumentApp.openById(DOC_ID).getBody().getText() });
+}
+function doPost(e) {
+  var d;
+  try { d = JSON.parse(e.postData.contents); } catch (err) { return out_({ error: 'formato' }); }
+  if ((d.t || '') !== TOKEN) return out_({ error: 'clave' });
+  if (typeof d.code !== 'string' || d.code.indexOf('PLANO') !== 0) return out_({ error: 'código inválido' });
+  DocumentApp.openById(DOC_ID).getBody().setText(d.code);
+  return out_({ ok: true });
+}`;
+  }
+  function renderSyncUI(){
+    $('syDoc').value = sync.docUrl; $('syScript').value = sync.scriptUrl; $('syToken').value = sync.token;
+    $('syAutoLoad').checked = !!sync.autoLoad; $('syAutoPush').checked = !!sync.autoPush;
+    const sel = $('sySlot');
+    sel.innerHTML = Array.from({ length:SLOTS }, (_, k) => `<option value="${k + 1}"${k + 1 === sync.slot ? ' selected' : ''}>Espacio ${k + 1}</option>`).join('');
+    $('syScriptText').textContent = scriptText();
+  }
+  function bindSync(){
+    const upd = (k, v) => { sync[k] = v; saveSync(); $('syScriptText').textContent = scriptText(); };
+    $('syDoc').addEventListener('change', e => { upd('docUrl', e.target.value.trim()); sync.lastRemote = ''; sync.lastLocal = ''; saveSync(); });
+    $('syScript').addEventListener('change', e => upd('scriptUrl', e.target.value.trim()));
+    $('syToken').addEventListener('change', e => upd('token', e.target.value.trim()));
+    $('sySlot').addEventListener('change', e => { upd('slot', +e.target.value); sync.lastRemote = ''; sync.lastLocal = ''; saveSync(); });
+    $('syAutoLoad').addEventListener('change', e => upd('autoLoad', e.target.checked));
+    $('syAutoPush').addEventListener('change', e => upd('autoPush', e.target.checked));
+    $('syGenToken').addEventListener('click', () => { $('syToken').value = genToken(); upd('token', $('syToken').value); });
+    $('syLoad').addEventListener('click', syncLoadNow);
+    $('syPush').addEventListener('click', () => syncPushNow(false));
+    $('syCopyScript').addEventListener('click', async () => {
+      if (!sync.token){ $('syToken').value = genToken(); upd('token', $('syToken').value); }
+      const txt = scriptText();
+      try { await navigator.clipboard.writeText(txt); toast('Script copiado.'); } catch(_){ window.prompt('Copia el script:', txt); }
+    });
+    $('syLink').addEventListener('click', async () => {
+      const cfg = { docUrl:sync.docUrl, scriptUrl:sync.scriptUrl, token:sync.token, slot:sync.slot, autoLoad:sync.autoLoad, autoPush:sync.autoPush };
+      const link = location.href.split('#')[0] + '#sync=' + encodeURIComponent(b64enc(JSON.stringify(cfg)));
+      try { await navigator.clipboard.writeText(link); toast('Enlace copiado. Ábrelo en la otra PC.'); } catch(_){ window.prompt('Copia el enlace:', link); }
+    });
+  }
+  // En una PC nueva: un enlace con la configuración (#sync=…) la deja lista; el documento manda en la primera sincronización
+  function importSyncFromHash(){
+    const m = location.hash.match(/^#sync=(.+)$/);
+    if (!m) return;
+    try {
+      const cfg = JSON.parse(b64dec(decodeURIComponent(m[1])));
+      for (const k of ['docUrl', 'scriptUrl', 'token']) if (typeof cfg[k] === 'string') sync[k] = cfg[k];
+      if (cfg.slot >= 1 && cfg.slot <= SLOTS) sync.slot = cfg.slot;
+      sync.autoLoad = cfg.autoLoad !== false; sync.autoPush = cfg.autoPush !== false;
+      sync.lastRemote = ''; sync.lastLocal = ''; sync.preferRemote = true;
+      saveSync();
+      toast('Sincronización configurada en este equipo.');
+    } catch(_){ toast('El enlace de configuración no es válido.'); }
+    try { history.replaceState(null, '', location.pathname + location.search); } catch(_){}
+  }
+  function initSync(){
+    importSyncFromHash();
+    renderSyncUI(); bindSync();
+    if (syncConfigured() && sync.autoLoad) syncCheck(true);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && syncConfigured() && sync.autoLoad && Date.now() - syncLastCheck > 30000) syncCheck(true);
+    });
+  }
+
   // ---- Atajos de teclado ----
   document.addEventListener('keydown', e => {
     if (v3.open){ if (e.key === 'Escape') close3D(); return; }
@@ -3103,6 +3378,7 @@ main{overflow:auto;padding:24px;display:flex}
   renderSlots();
   renderFloorUI();
   renderToolUI();
+  initSync();
 })();
 </script>
 </body>
