@@ -310,6 +310,7 @@ main{overflow:auto;padding:24px;display:flex}
     <label class="check"><input type="checkbox" id="v3dFurn" checked>Muebles</label>
     <label class="check"><input type="checkbox" id="v3dLow">Paredes bajas</label>
     <label class="check"><input type="checkbox" id="v3dRoof">Techo</label>
+    <label class="check"><input type="checkbox" id="v3dDims">Medidas</label>
     <label class="check" id="v3dP2wrap"><input type="checkbox" id="v3dP2" checked>Piso 2</label>
     <span class="spacer"></span>
     <button type="button" id="v3dMatBtn" aria-expanded="false">Materiales</button>
@@ -466,6 +467,7 @@ main{overflow:auto;padding:24px;display:flex}
   }
   // Aplica un plano completo (de un código o una versión) en el espacio activo
   function applyPlan(d){
+    if (d.mat3d) st.mat3d = JSON.parse(JSON.stringify(d.mat3d));
     mvSel = null;
     st.rows = d.rows; st.cols = d.cols; st.meters = d.meters;
     st.pisos = d.pisos || [{ h:d.h, v:d.v, f:d.f, names:d.names || {} }, null];
@@ -672,7 +674,7 @@ main{overflow:auto;padding:24px;display:flex}
 
   function snapshot(){
     syncPiso();
-    undoStack.push(JSON.stringify({ rows:st.rows, cols:st.cols, meters:st.meters, piso:st.piso, pisos:st.pisos }));
+    undoStack.push(JSON.stringify({ rows:st.rows, cols:st.cols, meters:st.meters, piso:st.piso, pisos:st.pisos, mat3d:st.mat3d || null }));
     if (undoStack.length > 150) undoStack.shift();
   }
   function undo(){
@@ -682,6 +684,7 @@ main{overflow:auto;padding:24px;display:flex}
     const d = JSON.parse(s);
     st.rows = d.rows; st.cols = d.cols; st.meters = d.meters;
     st.pisos = d.pisos;
+    if ('mat3d' in d) st.mat3d = d.mat3d || undefined;
     ensurePisos();
     loadPisoRefs(d.piso);
     syncInputs();
@@ -1481,6 +1484,8 @@ main{overflow:auto;padding:24px;display:flex}
   // Muebles: entradas "fila.columna.clave.giro" separadas por comas.
   // Nombres: entradas "fila.columna.nombreCodificado" separadas por comas.
   // También se aceptan códigos PLANO1 (sin muebles) y PLANO2 (sin nombres).
+  function b64enc(str){ return btoa(unescape(encodeURIComponent(str))); }
+  function b64dec(str){ return decodeURIComponent(escape(atob(str))); }
   function encode(d){
     d = d || st;
     if (d === st) syncPiso();
@@ -1493,8 +1498,9 @@ main{overflow:auto;padding:24px;display:flex}
     };
     const pisos = Array.isArray(d.pisos) && d.pisos[0] ? d.pisos : [{ h:d.h, v:d.v, f:d.f, names:d.names }];
     const head = [d.rows, d.cols, d.meters || 1];
-    if (floorHasContent(pisos[1])) return ['PLANO4', ...head, ...parts(pisos[0]), ...parts(pisos[1])].join(';');
-    return ['PLANO3', ...head, ...parts(pisos[0])].join(';');
+    const mat = d.mat3d && Object.keys(d.mat3d).length ? ['M=' + b64enc(JSON.stringify(d.mat3d))] : [];
+    if (floorHasContent(pisos[1])) return ['PLANO4', ...head, ...parts(pisos[0]), ...parts(pisos[1]), ...mat].join(';');
+    return ['PLANO3', ...head, ...parts(pisos[0]), ...mat].join(';');
   }
 
   function parseFloor(r, c, hs, vs, fs, ns, label){
@@ -1528,6 +1534,13 @@ main{overflow:auto;padding:24px;display:flex}
   }
   function decode(text){
     const p = text.replace(/\s+/g, '').split(';');
+    // Sección opcional de materiales al final (PLANO3 y PLANO4)
+    let mat3dIn = null;
+    if ((p[0] === 'PLANO3' || p[0] === 'PLANO4') && p.length && /^M=/.test(p[p.length - 1])){
+      try { mat3dIn = JSON.parse(b64dec(p.pop().slice(2))); }
+      catch(_){ throw new Error('La sección de materiales del código no es válida.'); }
+      if (!mat3dIn || typeof mat3dIn !== 'object') throw new Error('La sección de materiales del código no es válida.');
+    }
     const ver = { PLANO1:6, PLANO2:7, PLANO3:8, PLANO4:12 }[p[0]];
     if (!ver || p.length !== ver) throw new Error('El texto no tiene el formato de un código de plano.');
     const r = parseInt(p[1], 10), c = parseInt(p[2], 10), m = parseFloat(p[3]);
@@ -1536,7 +1549,9 @@ main{overflow:auto;padding:24px;display:flex}
     const multi = ver === 12;
     const p1 = parseFloor(r, c, p[4], p[5], ver >= 7 ? p[6] : '', ver >= 8 ? p[7] : '', multi ? ' (piso 1)' : '');
     const p2 = multi ? parseFloor(r, c, p[8], p[9], p[10], p[11], ' (piso 2)') : blankFloor(r, c);
-    return { rows:r, cols:c, meters:m, h:p1.h, v:p1.v, f:p1.f, names:p1.names, pisos:[p1, p2], piso:0 };
+    const out = { rows:r, cols:c, meters:m, h:p1.h, v:p1.v, f:p1.f, names:p1.names, pisos:[p1, p2], piso:0 };
+    if (mat3dIn) out.mat3d = mat3dIn;
+    return out;
   }
   function shareMsg(text, kind){
     const el = $('shareMsg');
@@ -2377,6 +2392,67 @@ main{overflow:auto;padding:24px;display:flex}
     return interior;
   }
 
+  // ---- Medidas en 3D: carteles que siempre miran a la cámara ----
+  function textSprite(lines, worldH){
+    const c = document.createElement('canvas'), g = c.getContext('2d');
+    const font = l => `${l.bold ? 700 : 500} ${l.size}px Archivo, system-ui, sans-serif`;
+    const padX = 22, padY = 14, gap = 6;
+    let w = 0, h = padY * 2 - gap;
+    for (const l of lines){ g.font = font(l); w = Math.max(w, g.measureText(l.text).width); h += l.size + gap; }
+    c.width = Math.ceil(w + padX * 2); c.height = Math.ceil(h);
+    g.fillStyle = 'rgba(17,22,28,.82)';
+    const r = 14;
+    g.beginPath(); g.moveTo(r, 0); g.arcTo(c.width, 0, c.width, c.height, r); g.arcTo(c.width, c.height, 0, c.height, r);
+    g.arcTo(0, c.height, 0, 0, r); g.arcTo(0, 0, c.width, 0, r); g.fill();
+    let y = padY;
+    g.textAlign = 'center'; g.textBaseline = 'top';
+    for (const l of lines){ g.font = font(l); g.fillStyle = l.color; g.fillText(l.text, c.width / 2, y); y += l.size + gap; }
+    const tex = new THREE.CanvasTexture(c);
+    tex.encoding = THREE.sRGBEncoding; tex.minFilter = THREE.LinearFilter; tex.anisotropy = 4;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthWrite:false }));
+    sp.scale.set(worldH * c.width / c.height, worldH, 1);
+    sp.renderOrder = 10;
+    return sp;
+  }
+  function buildLabels(p, base){
+    const R = st.rows, C = st.cols, m = st.meters;
+    const info = regionsOf(p);
+    // Ambientes cerrados: nombre, medidas y superficie en el centro
+    for (const r of info.regions){
+      if (!r.closed) continue;
+      let i0 = R, i1 = -1, j0 = C, j1 = -1, sy = 0, sx = 0;
+      for (const [i, j] of r.cells){ i0 = Math.min(i0, i); i1 = Math.max(i1, i); j0 = Math.min(j0, j); j1 = Math.max(j1, j); sy += i + .5; sx += j + .5; }
+      const w = j1 - j0 + 1, hgt = i1 - i0 + 1, rect = r.cells.length === w * hgt;
+      let cx = sx / r.cells.length, cz = sy / r.cells.length;
+      if (!rect){
+        let best = null, bd = Infinity;
+        for (const [i, j] of r.cells){ const d = (j + .5 - cx) ** 2 + (i + .5 - cz) ** 2; if (d < bd){ bd = d; best = [i, j]; } }
+        cx = best[1] + .5; cz = best[0] + .5;
+      }
+      const lines = [{ text:r.name || 'Habitación', size:40, bold:true, color:'#e6ebee' }];
+      if (rect) lines.push({ text:`${fmt(w * m)} × ${fmt(hgt * m)} m`, size:34, bold:true, color:'#6fd0b4' });
+      lines.push({ text:`${fmt(r.cells.length * m * m)} m²`, size:30, color:'#9aa6ad' });
+      const sp = textSprite(lines, rect ? .55 : .4);
+      sp.position.set(cx * m, base + (r.ext ? .5 : 1.5), cz * m);
+      v3.labels.add(sp);
+    }
+    // Cotas: tramos rectos y continuos de bordes ocupados, encima del muro
+    const top = Math.min($('v3dLow').checked ? 1.1 : H3.wall, H3.wall) + .2;
+    const cota = (len, x, z) => {
+      const sp = textSprite([{ text:fmt(len * m) + ' m', size:34, bold:true, color:'#f0b43c' }], .22);
+      sp.position.set(x, base + top, z);
+      v3.labels.add(sp);
+    };
+    for (let i = 0; i <= R; i++){ let j = 0; while (j < C){ if (!p.h[i][j]){ j++; continue; } const s0 = j; while (j < C && p.h[i][j]) j++; cota(j - s0, (s0 + (j - s0) / 2) * m, i * m); } }
+    for (let j = 0; j <= C; j++){ let i = 0; while (i < R){ if (!p.v[i][j]){ i++; continue; } const s0 = i; while (i < R && p.v[i][j]) i++; cota(i - s0, j * m, (s0 + (i - s0) / 2) * m); } }
+  }
+  function clearLabels(){
+    if (!v3.labels) return;
+    v3.labels.traverse(o => { if (o.isSprite){ o.material.map.dispose(); o.material.dispose(); } });
+    v3.scene.remove(v3.labels);
+    v3.labels = null;
+  }
+
   function build3D(){
     if (v3.group){
       v3.scene.remove(v3.group);
@@ -2397,6 +2473,14 @@ main{overflow:auto;padding:24px;display:flex}
     if (MT.cfg.techo && !$('v3dLow').checked) buildRoof(in0, in1);
     flushBatch();
     v3.scene.add(v3.group);
+    // Medidas (carteles)
+    clearLabels();
+    if ($('v3dDims').checked){
+      v3.labels = new THREE.Group();
+      buildLabels(st.pisos[0], 0);
+      if (show2) buildLabels(st.pisos[1], H3.floor);
+      v3.scene.add(v3.labels);
+    }
     v3.dirty = true;
   }
 
@@ -2772,6 +2856,8 @@ main{overflow:auto;padding:24px;display:flex}
   $('v3dFurn').addEventListener('change', () => { if (v3.renderer) build3D(); });
   $('v3dP2').addEventListener('change', () => { if (v3.renderer) build3D(); });
   $('v3dLow').addEventListener('change', () => { if (v3.renderer) build3D(); });
+  $('v3dDims').checked = uiPref('medidas3d', true);
+  $('v3dDims').addEventListener('change', e => { setUiPref('medidas3d', e.target.checked); if (v3.renderer) build3D(); });
   $('v3dRoof').addEventListener('change', e => setMat3d('techo', e.target.checked));
   $('v3dMatBtn').addEventListener('click', () => {
     const panel = $('v3dMat'), open = panel.hidden;
@@ -2875,6 +2961,27 @@ main{overflow:auto;padding:24px;display:flex}
     }
     return out.join('\n');
   }
+  // Descripción de los acabados de la vista 3D (solo lo que difiere del valor por defecto se marca como elegido)
+  function finishesText(){
+    if (!st.mat3d || !Object.keys(st.mat3d).length) return '';
+    const c = mat3d();
+    const desc = sp => !sp ? '—' : sp.t === 'color' ? `color ${sp.c.toUpperCase()}` : (TEXLIB[sp.id] ? TEXLIB[sp.id].n.toLowerCase() : sp.id);
+    const out = ['', '', 'ACABADOS (vista 3D):'];
+    for (const [k, [n]] of Object.entries(SECTORS)) out.push(`  ${n}: ${desc(c.s[k])}`);
+    out.push(`  Zócalos: ${c.zocalos ? 'sí' : 'no'} · Techo de tejas visible: ${c.techo ? 'sí' : 'no'}`);
+    const bo = c.boiserie, boRooms = Object.entries(bo.rooms);
+    out.push(`  Boiserie: ${bo.all ? 'en todas las paredes interiores' : 'no (salvo los ambientes indicados)'}, altura ${fmt(bo.h)} m`);
+    for (const [name, on] of boRooms) out.push(`    - ${name}: ${on ? 'con boiserie' : 'sin boiserie'}`);
+    const rooms = Object.entries(c.rooms);
+    if (rooms.length){
+      out.push('  Acabados por ambiente (reemplazan al general):');
+      for (const [name, r] of rooms){
+        if (r.piso) out.push(`    - ${name}, piso: ${desc(r.piso)}`);
+        if (r.paredes) out.push(`    - ${name}, paredes: ${desc(r.paredes)}`);
+      }
+    }
+    return out.join('\n');
+  }
   function planToText(){
     syncPiso();
     const m = st.meters;
@@ -2889,7 +2996,7 @@ main{overflow:auto;padding:24px;display:flex}
     ].join('\n');
     const blocks = floors.map(n => floorToText(st.pisos[n],
       floors.length > 1 ? `=== PISO ${n + 1} (${n === 0 ? 'planta baja' : 'planta alta'}) ===` : '=== PLANTA ==='));
-    return head + '\n\n' + blocks.join('\n\n');
+    return head + '\n\n' + blocks.join('\n\n') + finishesText();
   }
   function openTextExport(){
     $('txtOut').value = planToText();
