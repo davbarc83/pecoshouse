@@ -28,8 +28,13 @@ aside{background:var(--panel);border-right:1px solid var(--border);padding:20px 
 .slotsec{padding:14px 0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
 .slotlbl{font-weight:600;font-size:.95rem}
 .slots{display:flex;flex-direction:column;gap:4px}
-.slot{display:flex;flex-direction:row;align-items:baseline;justify-content:space-between;gap:10px;padding:6px 10px;min-width:0;text-align:left;width:100%}
-.slot .sname{font-weight:600;font-size:.85rem;flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere}
+.slotrow{display:flex;gap:4px;align-items:stretch}
+.slotrow .slot{flex:1;width:auto}
+.slotlink{display:flex;align-items:center;justify-content:center;width:38px;flex:none;border:1px solid var(--border);border-radius:6px;background:var(--sheet);color:var(--ink);text-decoration:none}
+.slotlink:hover{border-color:var(--ink)}
+.sy-off{display:none !important}
+.slot{display:flex;flex-direction:row;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 10px;padding:6px 10px;min-width:0;text-align:left;width:100%}
+.slot .sname{font-weight:600;font-size:.85rem;flex:1 1 auto;min-width:0;white-space:normal;overflow-wrap:anywhere}
 .slot .smeta{font-size:.7rem;color:var(--muted);flex:none;white-space:nowrap}
 .slot.sel{border-color:var(--door);box-shadow:inset 0 0 0 1px var(--door)}
 details.sec{border-bottom:1px solid var(--border)}
@@ -132,11 +137,12 @@ main{overflow:auto;padding:24px;display:flex}
 .plansvg .mvsrc{fill:var(--hover);opacity:.12}
 .plansvg .mvbad{fill:#B3412F;opacity:.35}
 .plansvg .selc{fill:var(--hover);fill-opacity:.1;stroke:var(--hover);stroke-width:1.5;stroke-dasharray:4 3}
-.toast{position:fixed;left:50%;top:calc(90px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:40;background:var(--ink);color:var(--sheet);padding:8px 14px;border-radius:6px;font-size:.88rem;box-shadow:0 6px 20px rgba(0,0,0,.35);pointer-events:none}
+.toast{max-width:min(520px,calc(100vw - 32px));text-align:center;position:fixed;left:50%;top:calc(90px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:40;background:var(--ink);color:var(--sheet);padding:8px 14px;border-radius:6px;font-size:.88rem;box-shadow:0 6px 20px rgba(0,0,0,.35);pointer-events:none}
 .toast[hidden]{display:none}
 .syncbanner{position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:45;max-width:min(430px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--hover);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.45);font-size:.9rem}
 .syncbanner[hidden]{display:none}
 .syncbanner .bbtns{display:flex;gap:6px;flex-wrap:wrap}
+.sy-adv[hidden]{display:none !important}
 details.syhelp{font-size:.85rem}
 details.syhelp > summary{cursor:pointer;color:var(--muted);padding:4px 0}
 details.syhelp ol{margin:6px 0;padding-left:18px;color:var(--muted);line-height:1.5}
@@ -223,6 +229,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       <div class="slotlbl">Espacio de trabajo</div>
       <div class="slots" id="slots" role="group" aria-label="Espacios de trabajo"></div>
       <label class="field">Nombre de este plano<input id="slotName" type="text" maxlength="40"></label>
+      <button type="button" id="slotRestore" hidden>Recuperar la copia anterior de este espacio</button>
     </div>
 
     <details class="sec" data-sec="paredes" open>
@@ -277,19 +284,19 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       </div>
     </details>
 
-    <details class="sec" data-sec="sync">
-      <summary>Sincronizar con Google Docs</summary>
+    <details class="sec" data-sec="sync" id="sySec">
+      <summary>Google Docs (espacio 0)</summary>
       <div class="body">
         <label class="field">Enlace del documento<input id="syDoc" type="text" placeholder="https://docs.google.com/document/d/…" spellcheck="false" autocomplete="off"></label>
-        <label class="field">Espacio vinculado<select id="sySlot"></select></label>
-        <label class="field">Enlace del script (para poder guardar)<input id="syScript" type="text" placeholder="https://script.google.com/macros/s/…/exec" spellcheck="false" autocomplete="off"></label>
-        <label class="field">Clave del script<span class="row"><input id="syToken" type="text" spellcheck="false" autocomplete="off"><button type="button" id="syGenToken" title="Generar una clave">Generar</button></span></label>
+        <label class="field sy-off">Espacio vinculado<select id="sySlot"></select></label>
+        <label class="field sy-adv" hidden>Enlace del script (opcional)<input id="syScript" type="text" placeholder="https://script.google.com/macros/s/…/exec" spellcheck="false" autocomplete="off"></label>
+        <label class="field sy-adv" hidden>Clave del script<span class="row"><input id="syToken" type="text" spellcheck="false" autocomplete="off"><button type="button" id="syGenToken" title="Generar una clave">Generar</button></span></label>
         <label class="check"><input type="checkbox" id="syAutoLoad">Cargar desde el documento al abrir</label>
-        <label class="check"><input type="checkbox" id="syAutoPush">Subir mis cambios automáticamente</label>
-        <div class="row"><button type="button" id="syLoad" class="primary">Cargar</button><button type="button" id="syPush">Subir</button></div>
-        <button type="button" id="syLink">Copiar enlace de configuración (otra PC)</button>
+        <label class="check sy-adv" hidden><input type="checkbox" id="syAutoPush">Subir mis cambios automáticamente</label>
+        <div class="row"><button type="button" id="syLoad" class="primary">Cargar</button><button type="button" id="syPush" class="sy-adv" hidden>Subir</button></div>
+        <button type="button" id="syLink" class="sy-adv" hidden>Copiar enlace de configuración (otra PC)</button>
         <p class="msg" id="syncStatus" role="status"></p>
-        <details class="syhelp">
+        <details class="syhelp sy-adv" hidden>
           <summary>Cómo habilitar el guardado (script de Google)</summary>
           <ol>
             <li>Abre el documento y ve a <strong>Extensiones → Apps Script</strong>.</li>
@@ -425,7 +432,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   let mvSel = null;        // Selección de la herramienta Mover: lista de [fila, columna]
   const SLOTS = 10;
   const undoStacks = {};
-  for (let n = 1; n <= SLOTS; n++) undoStacks[n] = [];
+  for (let n = 0; n <= SLOTS; n++) undoStacks[n] = [];   // el espacio 0 es el espejo del documento de Google Docs
   let undoStack = undoStacks[1];
 
   function makeGrid(r, c, oh, ov, of){
@@ -449,7 +456,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
 
   function defaults(n){
     return { rows:12, cols:12, cell:44, meters:1, showDims:true, showRooms:true,
-             h:[], v:[], f:[], names:{}, nombre:'Plano ' + n, editado:0,
+             h:[], v:[], f:[], names:{}, nombre:n === 0 ? 'Google Docs' : 'Plano ' + n, editado:0,
              pisos:null, piso:0, underOp:35 };
   }
   function readSlot(n){
@@ -639,7 +646,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
         localStorage.removeItem(KEY);
       }
       const a = parseInt(localStorage.getItem(ACTIVE_KEY), 10);
-      if (a >= 1 && a <= SLOTS) slot = a;
+      if (a >= 0 && a <= SLOTS) slot = a;
     } catch(_){}
     applyDefaultSlots();
     applyUpdates();
@@ -683,30 +690,51 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     }
     return txt;
   }
+  function docLink(){ try { return sync.docUrl || SYNC_DEFAULTS.docUrl; } catch(_){ return ''; } }
   function renderSlots(){
     const box = $('slots');
     if (!box) return;
     box.textContent = '';
-    for (let n = 1; n <= SLOTS; n++){
+    for (let n = 0; n <= SLOTS; n++){
       const d = n === slot ? st : readSlot(n);
+      const row = document.createElement('div');
+      row.className = 'slotrow';
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'slot' + (n === slot ? ' sel' : '');
       b.setAttribute('aria-pressed', String(n === slot));
       const nm = document.createElement('span');
       nm.className = 'sname';
-      nm.textContent = (d && d.nombre) || ('Plano ' + n);
+      nm.textContent = n === 0 ? 'Espacio 0 · Google Docs' : ((d && d.nombre) || ('Plano ' + n));
       const mt = document.createElement('span');
       mt.className = 'smeta';
       mt.textContent = slotSummary(d);
-      b.title = nm.textContent;
+      b.title = n === 0 ? 'Se carga desde el documento de Google Docs cada vez que lo eliges' : nm.textContent;
       b.append(nm, mt);
-      b.addEventListener('click', () => switchSlot(n));
-      box.appendChild(b);
+      b.addEventListener('click', () => {
+        if (n === 0){ if (slot !== 0) switchSlot(0); mirrorSelect(); }
+        else switchSlot(n);
+      });
+      row.appendChild(b);
+      if (n === 0){
+        const a = document.createElement('a');
+        a.className = 'slotlink';
+        a.href = docLink();
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.title = 'Abrir el documento en una pestaña nueva';
+        a.setAttribute('aria-label', 'Abrir el documento de Google Docs en una pestaña nueva');
+        a.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2.5 H13.5 V7 M13.5 2.5 L7 9 M11.5 9.5 V13 H3 V4.5 H6.5"/></svg>';
+        row.appendChild(a);
+      }
+      box.appendChild(row);
     }
     const inp = $('slotName');
-    if (document.activeElement !== inp) inp.value = st.nombre || ('Plano ' + slot);
+    inp.disabled = slot === 0;
+    if (document.activeElement !== inp) inp.value = slot === 0 ? 'Google Docs' : (st.nombre || ('Plano ' + slot));
+    updateRestore();
   }
+
 
   function snapshot(){
     syncPiso();
@@ -1539,6 +1567,36 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     return ['PLANO3', ...head, ...parts(pisos[0]), ...mat].join(';');
   }
 
+  // Los materiales de un código son datos externos: se reconstruyen aceptando solo valores válidos
+  function cleanSpec(sp){
+    if (!sp || typeof sp !== 'object') return null;
+    if (sp.t === 'color' && typeof sp.c === 'string' && /^#[0-9a-fA-F]{6}$/.test(sp.c)) return { t:'color', c:sp.c.toLowerCase() };
+    if (sp.t === 'tex' && typeof sp.id === 'string' && Object.prototype.hasOwnProperty.call(TEXLIB, sp.id)) return { t:'tex', id:sp.id };
+    return null;
+  }
+  function sanitizeMat3d(m){
+    const out = { techo: m.techo === true, zocalos: m.zocalos !== false };
+    if (m.s && typeof m.s === 'object'){
+      out.s = {};
+      for (const k of Object.keys(SECTORS)){ const c = cleanSpec(m.s[k]); if (c) out.s[k] = c; }
+    }
+    const okName = n => typeof n === 'string' && n.length > 0 && n.length <= 60 && !['__proto__', 'constructor', 'prototype'].includes(n);
+    if (m.rooms && typeof m.rooms === 'object'){
+      out.rooms = {};
+      for (const [name, r] of Object.entries(m.rooms)){
+        if (!okName(name) || !r || typeof r !== 'object') continue;
+        const e = {}, a = cleanSpec(r.piso), b = cleanSpec(r.paredes);
+        if (a) e.piso = a; if (b) e.paredes = b;
+        if (Object.keys(e).length) out.rooms[name] = e;
+      }
+    }
+    const bo = (m.boiserie && typeof m.boiserie === 'object') ? m.boiserie : {};
+    const h = Number(bo.h);
+    out.boiserie = { all: bo.all === true, h: Number.isFinite(h) ? Math.min(2.4, Math.max(0.3, h)) : 1.0, rooms:{} };
+    if (bo.rooms && typeof bo.rooms === 'object')
+      for (const [name, v] of Object.entries(bo.rooms)) if (okName(name) && typeof v === 'boolean') out.boiserie.rooms[name] = v;
+    return out;
+  }
   function parseFloor(r, c, hs, vs, fs, ns, label){
     if (!/^[0-7]*$/.test(hs + vs)) throw new Error(`El código contiene caracteres no válidos${label}.`);
     if (hs.length !== (r + 1) * c || vs.length !== r * (c + 1)) throw new Error(`El código está incompleto o fue modificado${label}.`);
@@ -1586,7 +1644,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     const p1 = parseFloor(r, c, p[4], p[5], ver >= 7 ? p[6] : '', ver >= 8 ? p[7] : '', multi ? ' (piso 1)' : '');
     const p2 = multi ? parseFloor(r, c, p[8], p[9], p[10], p[11], ' (piso 2)') : blankFloor(r, c);
     const out = { rows:r, cols:c, meters:m, h:p1.h, v:p1.v, f:p1.f, names:p1.names, pisos:[p1, p2], piso:0 };
-    if (mat3dIn) out.mat3d = mat3dIn;
+    if (mat3dIn) out.mat3d = sanitizeMat3d(mat3dIn);
     return out;
   }
   function shareMsg(text, kind){
@@ -3115,17 +3173,43 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   // El documento contiene un único código de plano. Se lee por su enlace de exportación (si el navegador lo permite)
   // o a través de un script de Google Apps Script, que además permite guardar.
   const SYNC_KEY = 'plano-grilla-sync';
-  const sync = Object.assign({ docUrl:'', scriptUrl:'', token:'', slot:1, autoLoad:true, autoPush:true,
+  // Valores predeterminados: se usan cuando el equipo todavía no tiene una configuración propia.
+  // El documento es de solo lectura para el editor: se edita pegando allí el código copiado desde la app.
+  const SYNC_DEFAULTS = {
+    docUrl:'https://docs.google.com/document/d/1VKE8RqgDbTa9nCCWLbQjSJX0Lxr4jeDLyg5lcA4Jh6s/edit?tab=t.0',
+    scriptUrl:'',   // opcional: enlace del script de lectura (/exec), si el navegador bloquea la lectura directa
+    slot:0,
+    v:2
+  };
+  const sync = Object.assign({ docUrl:'', scriptUrl:'', token:'', slot:1, autoLoad:true, autoPush:false, showAdv:false,
                                lastRemote:'', lastLocal:'', lastAt:0, preferRemote:false },
                              (() => { try { return JSON.parse(localStorage.getItem(SYNC_KEY) || '{}'); } catch(_){ return {}; } })());
   let syncBusy = false, syncApplying = false, syncTimer = null, syncLastCheck = 0;
   const saveSync = () => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch(_){} };
+  if (sync.v !== 2 && (sync.docUrl || sync.scriptUrl)){
+    // Migración: antes el documento se vinculaba al espacio 1; ahora siempre vive en el espacio 0
+    sync.v = 2; sync.slot = 0; sync.lastRemote = ''; sync.lastLocal = ''; sync.preferRemote = false; saveSync();
+  }
+  if (!sync.docUrl && !sync.scriptUrl){
+    // Equipo sin configuración: se vincula el documento fijo y, en la primera lectura, el documento manda
+    Object.assign(sync, { docUrl:SYNC_DEFAULTS.docUrl, scriptUrl:SYNC_DEFAULTS.scriptUrl, slot:SYNC_DEFAULTS.slot, v:SYNC_DEFAULTS.v,
+                          autoLoad:true, autoPush:false, lastRemote:'', lastLocal:'', preferRemote:true });
+    saveSync();
+  }
   const docIdOf = u => { const s = String(u || '').trim(); const m = s.match(/\/d\/([\w-]{20,})/); return m ? m[1] : (/^[\w-]{20,}$/.test(s) ? s : ''); };
   const hashOf = str => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return String(h >>> 0); };
   const extractCode = text => { const m = String(text || '').replace(/^\uFEFF/, '').match(/PLANO[1-4];\S+/); return m ? m[0] : ''; };
   const genToken = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), b => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
   const fail = msg => Object.assign(new Error(msg), { syncMsg:msg });
-  const syncErr = e => (e && e.syncMsg) || 'No se pudo conectar. Verifica la conexión a internet y los enlaces. Si la lectura directa del documento está bloqueada por el navegador, configura el script (ver instrucciones).';
+  const syncErr = e => (e && e.syncMsg) || 'Google no permitió leer el documento directamente desde el navegador (o no hay conexión a internet). Si estás conectado, usa el script de lectura: sus instrucciones aparecen abajo y su enlace va en «Enlace del script».';
+  function updateAdv(){
+    const show = !!sync.scriptUrl || !!sync.showAdv;
+    document.querySelectorAll('.sy-adv').forEach(e => { e.hidden = !show; });
+  }
+  // Un fallo de red sin mensaje propio indica bloqueo del navegador: se muestran las opciones del script
+  function revealOnNetworkFail(e){
+    if (!sync.scriptUrl && !(e && e.syncMsg)){ sync.showAdv = true; saveSync(); updateAdv(); const d = document.getElementById('sySec'); if (d) d.open = true; }
+  }
   const syncConfigured = () => !!(docIdOf(sync.docUrl) || sync.scriptUrl);
 
   function setStatus(msg, kind){
@@ -3188,7 +3272,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       if (n === slot){ snapshot(); applyPlan(d); syncInputs(); hover = null; render(); save(); }
       else {
         const p0 = prev || {};
-        const data = Object.assign(defaults(n), { nombre:p0.nombre || ('Plano ' + n), cell:p0.cell || 44, mat3d:d.mat3d || p0.mat3d,
+        const data = Object.assign(defaults(n), { nombre:n === 0 ? 'Google Docs' : (p0.nombre || ('Plano ' + n)), cell:p0.cell || 44, mat3d:d.mat3d || p0.mat3d,
           rows:d.rows, cols:d.cols, meters:d.meters, pisos:d.pisos, piso:0, h:d.h, v:d.v, f:d.f, names:d.names, editado:Date.now() });
         localStorage.setItem(SLOT_KEY(n), JSON.stringify(data));
         renderSlots();
@@ -3196,6 +3280,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     } finally { syncApplying = false; }
     markSynced(code);
     sync.preferRemote = false; saveSync();
+    updateRestore();
     setStatus('Plano cargado desde el documento a las ' + hora() + '.', 'ok');
   }
 
@@ -3226,10 +3311,10 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
         if (sync.autoLoad || !auto){ applyRemote(remote); toast('Se cargó una versión más nueva desde Google Docs.'); }
         else showBanner('Hay una versión más nueva del plano en Google Docs.', [['Cargarla', () => applyRemote(remote)], ['Ahora no', () => {}]]);
       } else if (!remoteChanged && localChanged){
-        setStatus('Hay cambios de este equipo sin subir al documento.');
+        setStatus(sync.scriptUrl ? 'Hay cambios de este equipo sin subir al documento.' : 'Este plano difiere del documento. Para actualizarlo, copia el código y pégalo en el documento.');
         if (sync.autoPush && sync.scriptUrl) schedulePush(0);
       } else showConflict(remote);
-    } catch(e){ setStatus('Error: ' + syncErr(e), 'err'); }
+    } catch(e){ setStatus('Error: ' + syncErr(e), 'err'); revealOnNetworkFail(e); }
     finally { syncBusy = false; }
   }
 
@@ -3249,7 +3334,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       await pushRemote(code);
       markSynced(code);
       setStatus('Guardado en el documento a las ' + hora() + '.', 'ok');
-    } catch(e){ setStatus('Error: ' + syncErr(e), 'err'); }
+    } catch(e){ setStatus('Error: ' + syncErr(e), 'err'); revealOnNetworkFail(e); }
     finally { syncBusy = false; }
   }
   function schedulePush(delay){
@@ -3257,6 +3342,26 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     clearTimeout(syncTimer);
     setStatus('Cambios pendientes de subir…');
     syncTimer = setTimeout(() => syncPushNow(false), delay == null ? 5000 : delay);
+  }
+
+  // Al elegir el espacio 0: trae el documento. Si hay cambios locales que no están en el documento, pregunta antes de descartarlos.
+  async function mirrorSelect(){
+    if (!syncConfigured()){ toast('Falta el enlace del documento de Google Docs.'); return; }
+    if (syncBusy) return;
+    syncBusy = true; setStatus('Consultando el documento…');
+    try {
+      const remote = await fetchRemote();
+      syncLastCheck = Date.now();
+      if (!remote){ setStatus('El documento todavía no contiene un código de plano.', 'err'); toast('El documento todavía no contiene un código de plano.'); return; }
+      const local = localCode();
+      if (remote === local){ markSynced(remote); setStatus('Sincronizado con el documento (' + hora() + ').', 'ok'); toast('Espacio 0: ya está actualizado.'); return; }
+      const edited = hashOf(local) !== sync.lastLocal && !slotIsEmpty();
+      if (edited && !confirm('El espacio 0 tiene cambios que no están en el documento. ¿Descartarlos y cargar la versión del documento? Se guarda una copia que podrás recuperar.')){
+        setStatus('Se mantienen los cambios locales del espacio 0.'); return;
+      }
+      applyRemote(remote); toast('Espacio 0 actualizado desde Google Docs.');
+    } catch(e){ setStatus('Error: ' + syncErr(e), 'err'); toast(syncErr(e)); revealOnNetworkFail(e); }
+    finally { syncBusy = false; }
   }
 
   async function syncLoadNow(){
@@ -3272,7 +3377,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
           !confirm((firstTime ? `Se reemplazará el plano actual del espacio ${sync.slot} por el del documento.` : `Hay cambios en el espacio ${sync.slot} que no se subieron y se reemplazarán por los del documento.`) +
                    (sync.slot === slot ? ' Podrás volver con Deshacer.' : ' Se guarda una copia de respaldo en este navegador.') + ' ¿Continuar?')){ setStatus(''); return; }
       applyRemote(remote); toast('Plano cargado desde Google Docs.');
-    } catch(e){ setStatus('Error: ' + syncErr(e), 'err'); }
+    } catch(e){ setStatus('Error: ' + syncErr(e), 'err'); revealOnNetworkFail(e); }
     finally { syncBusy = false; }
   }
 
@@ -3285,7 +3390,6 @@ function out_(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
 }
 function doGet(e) {
-  if ((e.parameter.t || '') !== TOKEN) return out_({ error: 'clave' });
   return out_({ ok: true, code: DocumentApp.openById(DOC_ID).getBody().getText() });
 }
 function doPost(e) {
@@ -3301,10 +3405,30 @@ function doPost(e) {
     $('syDoc').value = sync.docUrl; $('syScript').value = sync.scriptUrl; $('syToken').value = sync.token;
     $('syAutoLoad').checked = !!sync.autoLoad; $('syAutoPush').checked = !!sync.autoPush;
     const sel = $('sySlot');
-    sel.innerHTML = Array.from({ length:SLOTS }, (_, k) => `<option value="${k + 1}"${k + 1 === sync.slot ? ' selected' : ''}>Espacio ${k + 1}</option>`).join('');
+    sel.innerHTML = Array.from({ length:SLOTS + 1 }, (_, k) => `<option value="${k}"${k === sync.slot ? ' selected' : ''}>Espacio ${k}</option>`).join('');
     $('syScriptText').textContent = scriptText();
+    updateAdv(); updateRestore();
+  }
+  // Respaldo del contenido anterior del espacio vinculado (se guarda antes de reemplazarlo con el del documento)
+  // Copia del contenido anterior de un espacio (se guarda antes de reemplazarlo por un plano que viene de afuera)
+  function backupKeyFor(n){ return SLOT_KEY(n) + '-respaldo'; }
+  function updateRestore(){
+    let has = false; try { has = !!localStorage.getItem(backupKeyFor(slot)); } catch(_){}
+    const b = $('slotRestore'); if (b) b.hidden = !has;
+  }
+  function restoreBackup(){
+    const n = slot;
+    let raw = null; try { raw = localStorage.getItem(backupKeyFor(n)); } catch(_){}
+    if (!raw) return;
+    if (!confirm('Se reemplazará el plano actual de este espacio por la copia anterior guardada en este navegador (el actual pasa a ser la nueva copia). ¿Continuar?')) return;
+    syncPiso();
+    const cur = JSON.stringify(st);
+    try { localStorage.setItem(SLOT_KEY(n), raw); localStorage.setItem(backupKeyFor(n), cur); } catch(_){ return; }
+    loadSlot(n, true); syncInputs(); hover = null; mvSel = null; render(); renderFloorUI(); renderToolUI(); renderSlots();
+    toast('Copia anterior recuperada.');
   }
   function bindSync(){
+    $('slotRestore').addEventListener('click', restoreBackup);
     const upd = (k, v) => { sync[k] = v; saveSync(); $('syScriptText').textContent = scriptText(); };
     $('syDoc').addEventListener('change', e => { upd('docUrl', e.target.value.trim()); sync.lastRemote = ''; sync.lastLocal = ''; saveSync(); });
     $('syScript').addEventListener('change', e => upd('scriptUrl', e.target.value.trim()));
