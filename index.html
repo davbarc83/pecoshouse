@@ -722,8 +722,9 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
         a.href = docLink();
         a.target = '_blank';
         a.rel = 'noopener noreferrer';
-        a.title = 'Abrir el documento en una pestaña nueva';
-        a.setAttribute('aria-label', 'Abrir el documento de Google Docs en una pestaña nueva');
+        a.title = 'Copiar el plano actual y abrir el documento en una pestaña nueva';
+        a.setAttribute('aria-label', 'Copiar el plano actual y abrir el documento de Google Docs en una pestaña nueva');
+        a.addEventListener('click', openDocWithCopy);
         a.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2.5 H13.5 V7 M13.5 2.5 L7 9 M11.5 9.5 V13 H3 V4.5 H6.5"/></svg>';
         row.appendChild(a);
       }
@@ -1246,11 +1247,40 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     }
   }
   let toastTimer = null;
-  function toast(msg){
+  function toast(msg, ms){
     const t = $('toast');
     t.textContent = msg; t.hidden = false;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { t.hidden = true; }, 2800);
+    toastTimer = setTimeout(() => { t.hidden = true; }, ms || 2800);
+  }
+  // Copia texto al portapapeles (con alternativa para navegadores que bloquean la API moderna)
+  async function copyToClipboard(text){
+    try { await navigator.clipboard.writeText(text); return true; } catch(_){}
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return !!ok;
+    } catch(_){ return false; }
+  }
+  // Botón del espacio 0: copia el plano que se ve en pantalla, avisa y abre el documento para pegarlo
+  async function openDocWithCopy(e){
+    e.preventDefault();
+    const url = docLink();
+    if (!url) return;
+    if (editing) finishNameEdit(true);
+    const ok = await copyToClipboard(encode());
+    toast(ok ? 'Plano actual copiado. Abriendo Google Docs… Usa Ctrl+A y pega para reemplazar el contenido.'
+             : 'No se pudo copiar el plano automáticamente (usa «Copiar plano al portapapeles»). Abriendo Google Docs…', 4200);
+    setTimeout(() => {
+      const w = window.open(url, '_blank');
+      if (w){ try { w.opener = null; } catch(_){} }
+      else showBanner('El navegador bloqueó la apertura automática del documento.',
+        [['Abrir Google Docs', () => { const x = window.open(url, '_blank'); if (x){ try { x.opener = null; } catch(_){} } }], ['Cerrar', () => {}]]);
+    }, 900);
   }
   // Gira 90° en sentido horario la selección, sobre el centro de su rectángulo
   function rotateSelection(){
