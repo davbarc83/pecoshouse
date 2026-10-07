@@ -933,15 +933,17 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     return t === 'h' ? [x1, y1, x1 + L, y1] : [x1, y1, x1, y1 + L];
   }
 
-  const DOOR_CYCLE = [2, 5, 4, 6];
+  const DOOR_CYCLE = [2, 5, 4, 6, 8, 9];   // batientes (cuatro variantes) y embutidas (la hoja se mete en el muro hacia el inicio o hacia el final)
   const doorsOpen = () => uiPref('puertasAbiertas', true);
   // La hoja mide 80 cm y, con el marco, el vano queda de 90 cm; el resto del vano de 1 m es pared.
   // Las puertas más angostas (antiguas, de 50 cm) conservan su proporción anterior.
   function doorGeom(vanoM){ return vanoM >= 0.95 ? { open:0.9, leaf:0.8 } : { open:vanoM, leaf:vanoM * 0.9 }; }
-  const isDoor = v => v === 2 || v === 4 || v === 5 || v === 6;
+  const isDoor = v => v === 2 || v === 4 || v === 5 || v === 6 || v === 8 || v === 9;
+  let doorOver = '';   // trazos que deben quedar por encima de las paredes (la hoja metida en el muro)
   // Una puerta ocupa bordes consecutivos con la misma orientación; se dibuja como una sola hoja
   function edgesSVG(hh, vv){
     let walls = '', others = '';
+    doorOver = '';
     for (let i = 0; i <= st.rows; i++) for (let j = 0; j < st.cols; j++){
       const x = hh[i][j]; if (!x) continue;
       if (x === 1) walls += drawEdge('h', i, j, 1);
@@ -960,7 +962,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
         others += drawEdge('v', i, j, x, n);
       } else others += drawEdge('v', i, j, x);
     }
-    return { walls, others };
+    return { walls, others, over:doorOver };
   }
   // Tramo de puerta que contiene al borde e: { t, i, j (inicio), n (bordes), val }
   function doorSpanAt(e){
@@ -973,6 +975,14 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   }
   const spanEdges = sp => Array.from({ length:sp.n }, (_, k) => sp.t === 'h' ? { t:'h', i:sp.i, j:sp.j + k } : { t:'v', i:sp.i + k, j:sp.j });
   // Qué haría un clic con la herramienta Puerta sobre el borde e
+  // La embutida necesita unos 65 cm de pared continua junto al vano, del lado de la bolsa
+  function pocketWallOK(sp, val){
+    const need = Math.ceil(0.65 / st.meters - 1e-9), len = sp.t === 'h' ? st.cols : st.rows;
+    const start = sp.t === 'h' ? sp.j : sp.i;
+    const at = k => (k < 0 || k >= len) ? null : (sp.t === 'h' ? st.h[sp.i][k] : st.v[k][sp.j]);
+    for (let q = 1; q <= need; q++) if (at(val === 8 ? start - q : start + sp.n - 1 + q) !== 1) return false;
+    return true;
+  }
   function doorTarget(ev, e){
     const cur = getE(e);
     const len = e.t === 'h' ? st.cols : st.rows;
@@ -1027,7 +1037,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       const r = g.leaf * kpx, open = g.open * kpx;
       let dir = t === 'h' ? (i === st.rows ? -1 : 1) : (j === st.cols ? -1 : 1);
       if (val === 4 || val === 6) dir = -dir;                 // abre hacia el otro lado
-      const hingeEnd = val === 5 || val === 6;                // bisagra en el otro extremo
+      const hingeEnd = val === 5 || val === 6 || val === 9;   // bisagra (o bolsa de la embutida) en el otro extremo
       const jl = wallW / 2 + 1;
       const jamb = (x, y) => t === 'h'
         ? `<line class="jamb" x1="${x}" y1="${y - jl}" x2="${x}" y2="${y + jl}" stroke-width="2"/>`
@@ -1051,6 +1061,14 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       }
       // Puerta cerrada: solo la hoja, sobre el muro
       if (!doorsOpen()) return `<path class="door" d="M${hx} ${hy} L${ax} ${ay}" stroke-width="2"/>` + jambs + stub;
+      // Puerta embutida (abierta): asoma una tira de hoja junto a la jamba y el resto va dentro del muro vecino (línea punteada)
+      if (val === 8 || val === 9){
+        const vis = Math.min(0.16 * kpx, r), sgn = hingeEnd ? -1 : 1;
+        const ex = t === 'h' ? hx + sgn * vis : hx, ey = t === 'h' ? hy : hy + sgn * vis;
+        const qx = t === 'h' ? hx - sgn * (r - vis) : hx, qy = t === 'h' ? hy : hy - sgn * (r - vis);
+        doorOver += `<path class="door" d="M${hx} ${hy} L${qx} ${qy}" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+        return `<path class="door" d="M${hx} ${hy} L${ex} ${ey}" stroke-width="3"/>` + jambs + stub;
+      }
       // Sentido del arco según el producto vectorial (en SVG, positivo = horario)
       const cross = (ax - hx) * (ly - hy) - (ay - hy) * (lx - hx);
       const leaf = `M${hx} ${hy} L${lx} ${ly}`;
@@ -1332,7 +1350,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       const p = st.pisos[0];
       let uf = '', uo = '', uw = '';
       if (furnVisible()) for (const z of (p.pz || [])) uf += pieceSVG(z);
-      const ue = edgesSVG(p.h, p.v); uw = ue.walls; uo = ue.others;
+      const ue = edgesSVG(p.h, p.v); uw = ue.walls + ue.over; uo = ue.others;
       g += `<g class="under" opacity="${(st.underOp == null ? 35 : st.underOp) / 100}" pointer-events="none">${uf}${uo}${uw}</g>`;
     }
 
@@ -1344,7 +1362,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
 
     // Aberturas primero, paredes encima
     const es = edgesSVG(st.h, st.v);
-    g += es.others + es.walls;
+    g += es.others + es.walls + es.over;
 
     if (st.showDims) g += drawDims();
     roomMeta = [];
@@ -1674,6 +1692,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
             const dt = doorTarget(ev, e);
             const val = dt.action === 'rotate' ? DOOR_CYCLE[(DOOR_CYCLE.indexOf(dt.span.val) + 1) % DOOR_CYCLE.length] : dt.span.val;
             for (const x of spanEdges(dt.span)) setE(x, val);
+            if ((val === 8 || val === 9) && !pocketWallOK(dt.span, val)) toast('La puerta embutida necesita unos 65 cm de pared continua junto al vano, del lado de la bolsa.', 4500);
           }
           ev.preventDefault();
           hover = null;
@@ -1808,7 +1827,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   // ---- Herramientas ----
   const TOOL_HELP = {
     '1': '<strong>Pared:</strong> clic cerca del borde de un cuadro para poner o quitar una pared. Mantén presionado y arrastra para trazar una línea recta.',
-    '2': '<strong>Puerta:</strong> clic en un borde para colocar una puerta de 1 m, centrada en el vértice más cercano. Clic sobre una puerta existente para rotarla (bisagra y sentido de apertura); si es una puerta antigua de 50 cm, el primer clic la amplía a 1 m.',
+    '2': '<strong>Puerta:</strong> clic en un borde para colocar una puerta de 1 m, centrada en el vértice más cercano. Clic sobre una puerta existente para cambiar su variante: batiente (cuatro posiciones de bisagra y apertura) o embutida (la hoja se mete en el muro hacia un lado u otro y asoma una tira de 16 cm). Si es una puerta antigua de 50 cm, el primer clic la amplía a 1 m.',
     '3': '<strong>Ventana:</strong> clic en un borde para colocarla. Arrastra para hacer una ventana corrida.',
     '7': '<strong>Reja:</strong> se traza igual que una pared (clic o arrastrando en línea recta). Cierra el ambiente pero deja ver a través; en 3D se ve con barrotes negros de 1,8 m (1 m en el piso 2, como baranda).',
     '0': '<strong>Borrar:</strong> cerca de un borde borra paredes, puertas y ventanas; sobre un mueble lo borra. Arrastra para borrar varios muebles.',
@@ -2040,7 +2059,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     return out;
   }
   function parseFloor(r, c, hs, vs, fs, ns, label, usePieces, cs){
-    if (!/^[0-7]*$/.test(hs + vs)) throw new Error(`El código contiene caracteres no válidos${label}.`);
+    if (!/^[0-9]*$/.test(hs + vs)) throw new Error(`El código contiene caracteres no válidos${label}.`);
     if (hs.length !== (r + 1) * c || vs.length !== r * (c + 1)) throw new Error(`El código está incompleto o fue modificado${label}.`);
     const g = makeGrid(r, c);
     for (let i = 0; i <= r; i++) g.h[i] = Array.from(hs.substr(i * c, c), Number);
@@ -2245,7 +2264,9 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     madera:['Madera de muebles y puertas', { t:'tex', id:'madera-roble' }],
     tapizados:['Tapizados (cama y sillones)', { t:'color', c:'#6f7c8a' }],
     mesadas:['Mesadas', { t:'color', c:'#3a3c3f' }],
-    'muebles-cocina':['Muebles de cocina', { t:'color', c:'#e7e4de' }]
+    'muebles-cocina':['Muebles de cocina', { t:'color', c:'#e7e4de' }],
+    baldosas:['Baldosas sueltas', { t:'color', c:'#b9b5ad' }],
+    pergola:['Pérgola (madera)', { t:'tex', id:'madera-roble' }]
   };
   function mat3d(){
     const raw = st.mat3d || {};
@@ -2263,6 +2284,9 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     }
     const bo = Object.assign({ all:false, h:1.0, rooms:{} }, raw.boiserie || {});
     bo.rooms = Object.assign({}, bo.rooms);
+    // La pérgola tiene su propio acabado; las configuraciones anteriores conservan la madera que ya usaban
+    if (raw.s && !raw.s.pergola && raw.s.madera) s.pergola = raw.s.madera;
+    if (!raw.s && raw.wood) s.pergola = s.madera;
     return { s, rooms: raw.rooms || {}, techo: !!raw.techo, zocalos: raw.zocalos !== false, boiserie:bo };
   }
   // Piso «húmedo»: baños y lavaderos siempre; la cocina solo si no está integrada al estar o comedor
@@ -2518,6 +2542,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       // Sombra del relieve de los marcos: el mismo tono, apenas más oscuro
       boiserieShade: S.boiserie.t === 'color' ? matC(toHex(tint(S.boiserie.c, .8)), { roughness:.6 }) : finishMat(S.boiserie, 'surface', { roughness:.55, color:lin('#bdbdbd') }),
       wood:finishMat(S.madera, 'object'), door,
+      baldosa:finishMat(S.baldosas, 'surface', { roughness:.9 }), pergola:finishMat(S.pergola, 'object'),
       fabric:finishMat(fab, 'object', { roughness:.95 }), fabric2,
       linen:matC('#efebe3', { roughness:.95 }), white:matC('#f4f4f1', { roughness:.3 }),
       cab:finishMat(S['muebles-cocina'], 'object', { roughness:.5 }), top:finishMat(S.mesadas, 'object', { roughness:.35 }),
@@ -2647,11 +2672,11 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     },
     A(W, D){ // pérgola: cuatro patas de madera y techo de vigas y tirantillos, con huecos
       const t = MT, h = 2.4, post = 0.12, ix = W / 2 - post / 2, iz = D / 2 - post / 2, ov = 0.2;
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) pbox(sx * ix - post / 2, 0, sz * iz - post / 2, sx * ix + post / 2, h, sz * iz + post / 2, t.wood);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) pbox(sx * ix - post / 2, 0, sz * iz - post / 2, sx * ix + post / 2, h, sz * iz + post / 2, t.pergola);
       const nb = Math.max(2, Math.round(D / 0.9) + 1);
-      for (let k = 0; k < nb; k++){ const z = -iz + k * (2 * iz) / (nb - 1); pbox(-W / 2 - ov, h - 0.02, z - 0.045, W / 2 + ov, h + 0.14, z + 0.045, t.wood); }
+      for (let k = 0; k < nb; k++){ const z = -iz + k * (2 * iz) / (nb - 1); pbox(-W / 2 - ov, h - 0.02, z - 0.045, W / 2 + ov, h + 0.14, z + 0.045, t.pergola); }
       const ns = Math.max(3, Math.floor((W + 2 * ov) / 0.24));
-      for (let k = 0; k < ns; k++){ const x = -W / 2 - ov + (k + 0.5) * (W + 2 * ov) / ns; pbox(x - 0.02, h + 0.14, -D / 2 - ov, x + 0.02, h + 0.21, D / 2 + ov, t.wood); }
+      for (let k = 0; k < ns; k++){ const x = -W / 2 - ov + (k + 0.5) * (W + 2 * ov) / ns; pbox(x - 0.02, h + 0.14, -D / 2 - ov, x + 0.02, h + 0.21, D / 2 + ov, t.pergola); }
     },
     B(W, D){ // parrilla argentina: cuerpo de piedra, fogón con parrilla, leñero, campana y chimenea
       const t = MT, stone = matC('#8a7f72', { roughness:.95 }), stone2 = matC('#6f665b', { roughness:.95 }), slab = matC('#d9d5ce', { roughness:.6 });
@@ -2669,7 +2694,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       pbox(-a, 1.5, -D / 2, a, 1.85, -D / 2 + hd, stone);                                              // campana
       pbox(-0.18, 1.85, -D / 2, 0.18, 2.8, -D / 2 + Math.min(0.36, hd), stone);                         // chimenea
     },
-    C(W, D){ pbox(-W / 2, 0, -D / 2, W / 2, 0.04, D / 2, matC('#b9b5ad', { roughness:.95 })); },       // baldosa suelta
+    C(W, D){ pbox(-W / 2, 0, -D / 2, W / 2, 0.04, D / 2, MT.baldosa); },       // baldosa suelta
     D(W, D){ // maceta o cantero con plantas
       const t = MT, conc = matC('#e6e3dd', { roughness:.9 }), soil = matC('#4a3626', { roughness:1 }), th = 0.06, h = 0.55;
       pbox(-W / 2, 0, -D / 2, W / 2, h, -D / 2 + th, conc); pbox(-W / 2, 0, D / 2 - th, W / 2, h, D / 2, conc);
@@ -2730,8 +2755,9 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       setFrame(0, 0, 0, 0);
       // Marco: ocupa el tramo del vano junto a la bisagra; el resto del vano se rellena con pared
       const tf = H3.thick / 2 + .01;
-      const hingeEnd = val === 5 || val === 6;
+      const hingeEnd = val === 5 || val === 6 || val === 9;
       const open = doorGeom(L).open;
+      const pocket = val === 8 || val === 9;
       const o0 = hingeEnd ? a1 - open : a0, o1 = hingeEnd ? a1 : a0 + open;
       if (horiz){ pbox(o0, base, fixed - tf, o0 + .05, base + H3.door, fixed + tf, t.trim); pbox(o1 - .05, base, fixed - tf, o1, base + H3.door, fixed + tf, t.trim); pbox(o0, base + H3.door - .05, fixed - tf, o1, base + H3.door, fixed + tf, t.trim); }
       else { pbox(fixed - tf, base, o0, fixed + tf, base + H3.door, o0 + .05, t.trim); pbox(fixed - tf, base, o1 - .05, fixed + tf, base + H3.door, o1, t.trim); pbox(fixed - tf, base + H3.door - .05, o0, fixed + tf, base + H3.door, o1, t.trim); }
@@ -2739,15 +2765,15 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       // Hoja (misma lógica de bisagra y sentido que el plano 2D)
       let dir = horiz ? (line === R ? -1 : 1) : (line === C ? -1 : 1);
       if (val === 4 || val === 6) dir = -dir;
-      const leafL = open - .1;
+      const leafL = (pocket && doorsOpen()) ? 0.16 : open - .1;   // embutida abierta: solo asoma una tira de 16 cm
       let hx, hz, cx, cz, px, pz;
       if (horiz){ hx = hingeEnd ? a1 - .05 : a0 + .05; hz = fixed; cx = hingeEnd ? -1 : 1; cz = 0; px = 0; pz = dir; }
       else { hx = fixed; hz = hingeEnd ? a1 - .05 : a0 + .05; cx = 0; cz = hingeEnd ? -1 : 1; px = dir; pz = 0; }
-      const ang = doorsOpen() ? 75 * Math.PI / 180 : 0;   // abierta (75°) o cerrada (en el plano del muro)
+      const ang = (doorsOpen() && !pocket) ? 75 * Math.PI / 180 : 0;   // abierta (75°) o cerrada (en el plano del muro)
       const vx = cx * Math.cos(ang) + px * Math.sin(ang), vz = cz * Math.cos(ang) + pz * Math.sin(ang);
       setFrame(hx + vx * leafL / 2, base + 1.0, hz + vz * leafL / 2, Math.atan2(-vz, vx));
       pbox(-leafL / 2, -1.0, -.02, leafL / 2, .99, .02, t.door);
-      for (const sz of [-1, 1]) pbox(leafL / 2 - .1, -.02, sz * .02 - (sz < 0 ? .03 : 0), leafL / 2 - .04, 0, sz * .02 + (sz > 0 ? .03 : 0), t.steel);
+      if (leafL > 0.3) for (const sz of [-1, 1]) pbox(leafL / 2 - .1, -.02, sz * .02 - (sz < 0 ? .03 : 0), leafL / 2 - .04, 0, sz * .02 + (sz > 0 ? .03 : 0), t.steel);
     };
     for (let i = 0; i <= R; i++) for (let j = 0; j < C; j++){
       const x = p.h[i][j]; if (!isDoor(x) || (j > 0 && p.h[i][j - 1] === x)) continue;
@@ -3572,7 +3598,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       `PLANO: ${st.nombre || 'Plano'}`,
       `Escala: cada celda mide ${fmt(m)} × ${fmt(m)} m. Grilla de ${st.cols} × ${st.rows} celdas (${fmt(st.cols * m)} × ${fmt(st.rows * m)} m).`,
       'Orientación del dibujo: arriba = norte, abajo = sur, izquierda = oeste, derecha = este.',
-      'Bordes entre celdas: "--" y "|" = pared · "==" y ":" = ventana · "DD" y "D" = puerta · "##" y "#" = reja.',
+      'Bordes entre celdas: "--" y "|" = pared · "==" y ":" = ventana · "DD" y "D" = puerta (batiente o embutida en el muro) · "##" y "#" = reja.',
       'Las reglas indican el número de columna (arriba) y de fila (izquierda), contando desde 0.'
     ].join('\n');
     const blocks = floors.map(n => floorToText(st.pisos[n],
