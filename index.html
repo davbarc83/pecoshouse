@@ -288,6 +288,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
         <label class="field">Metros por cuadro<input id="meters" type="number" min="0.1" step="0.1" value="1"></label>
         <label class="check"><input id="dims" type="checkbox" checked>Mostrar medidas de las paredes</label>
         <label class="check"><input id="rooms" type="checkbox" checked>Mostrar medidas de los ambientes</label>
+        <label class="check"><input id="doorsOpen" type="checkbox" checked>Puertas abiertas (plano y 3D)</label>
         <div class="stats" id="stats"></div>
       </div>
     </details>
@@ -377,6 +378,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     <label class="check"><input type="checkbox" id="v3dLow">Paredes bajas</label>
     <label class="check"><input type="checkbox" id="v3dRoof">Techo</label>
     <label class="check"><input type="checkbox" id="v3dDims">Medidas</label>
+    <label class="check"><input type="checkbox" id="v3dDoors" checked>Puertas abiertas</label>
     <label class="check" id="v3dP2wrap"><input type="checkbox" id="v3dP2" checked>Piso 2</label>
     <span class="spacer"></span>
     <button type="button" id="v3dMatBtn" aria-expanded="false">Materiales</button>
@@ -927,6 +929,10 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   }
 
   const DOOR_CYCLE = [2, 5, 4, 6];
+  const doorsOpen = () => uiPref('puertasAbiertas', true);
+  // La hoja mide 80 cm y, con el marco, el vano queda de 90 cm; el resto del vano de 1 m es pared.
+  // Las puertas más angostas (antiguas, de 50 cm) conservan su proporción anterior.
+  function doorGeom(vanoM){ return vanoM >= 0.95 ? { open:0.9, leaf:0.8 } : { open:vanoM, leaf:vanoM * 0.9 }; }
   const isDoor = v => v === 2 || v === 4 || v === 5 || v === 6;
   // Una puerta ocupa bordes consecutivos con la misma orientación; se dibuja como una sola hoja
   function edgesSVG(hh, vv){
@@ -1012,31 +1018,39 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       return r + `<line class="win-l" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="1"/>`;
     }
     if (isDoor(val)){
-      const r = S * (n || 1) * 0.9;
+      const g = doorGeom((n || 1) * st.meters), kpx = S / st.meters;
+      const r = g.leaf * kpx, open = g.open * kpx;
       let dir = t === 'h' ? (i === st.rows ? -1 : 1) : (j === st.cols ? -1 : 1);
       if (val === 4 || val === 6) dir = -dir;                 // abre hacia el otro lado
       const hingeEnd = val === 5 || val === 6;                // bisagra en el otro extremo
       const jl = wallW / 2 + 1;
+      const jamb = (x, y) => t === 'h'
+        ? `<line class="jamb" x1="${x}" y1="${y - jl}" x2="${x}" y2="${y + jl}" stroke-width="2"/>`
+        : `<line class="jamb" x1="${x - jl}" y1="${y}" x2="${x + jl}" y2="${y}" stroke-width="2"/>`;
       // Bisagra (hx, hy), punto de la hoja abierta (lx, ly) y punto del vano a distancia r (ax, ay)
-      let hx, hy, lx, ly, ax, ay, jambs;
+      let hx, hy, lx, ly, ax, ay, jambs, stub = '';
       if (t === 'h'){
         hx = hingeEnd ? x2 : x1; hy = y1;
         lx = hx; ly = y1 + dir * r;
         ax = hingeEnd ? hx - r : hx + r; ay = y1;
-        jambs = `<line class="jamb" x1="${x1}" y1="${y1 - jl}" x2="${x1}" y2="${y1 + jl}" stroke-width="2"/>` +
-                `<line class="jamb" x1="${x2}" y1="${y1 - jl}" x2="${x2}" y2="${y1 + jl}" stroke-width="2"/>`;
+        const fx = hingeEnd ? hx - open : hx + open, ex = hingeEnd ? x1 : x2;       // jamba libre y extremo del vano
+        jambs = jamb(hx, y1) + jamb(fx, y1);
+        if (Math.abs(ex - fx) > 1) stub = `<line class="wall" x1="${fx}" y1="${y1}" x2="${ex}" y2="${y1}" stroke-width="${wallW}"/>`;
       } else {
         hx = x1; hy = hingeEnd ? y2 : y1;
         lx = x1 + dir * r; ly = hy;
         ax = x1; ay = hingeEnd ? hy - r : hy + r;
-        jambs = `<line class="jamb" x1="${x1 - jl}" y1="${y1}" x2="${x1 + jl}" y2="${y1}" stroke-width="2"/>` +
-                `<line class="jamb" x1="${x1 - jl}" y1="${y2}" x2="${x1 + jl}" y2="${y2}" stroke-width="2"/>`;
+        const fy = hingeEnd ? hy - open : hy + open, ey = hingeEnd ? y1 : y2;
+        jambs = jamb(x1, hy) + jamb(x1, fy);
+        if (Math.abs(ey - fy) > 1) stub = `<line class="wall" x1="${x1}" y1="${fy}" x2="${x1}" y2="${ey}" stroke-width="${wallW}"/>`;
       }
+      // Puerta cerrada: solo la hoja, sobre el muro
+      if (!doorsOpen()) return `<path class="door" d="M${hx} ${hy} L${ax} ${ay}" stroke-width="2"/>` + jambs + stub;
       // Sentido del arco según el producto vectorial (en SVG, positivo = horario)
       const cross = (ax - hx) * (ly - hy) - (ay - hy) * (lx - hx);
       const leaf = `M${hx} ${hy} L${lx} ${ly}`;
       const arc = `M${ax} ${ay} A${r} ${r} 0 0 ${cross > 0 ? 1 : 0} ${lx} ${ly}`;
-      return `<path class="door" d="${leaf}" stroke-width="2"/><path class="door" d="${arc}" stroke-width="1" stroke-dasharray="3 2"/>` + jambs;
+      return `<path class="door" d="${leaf}" stroke-width="2"/><path class="door" d="${arc}" stroke-width="1" stroke-dasharray="3 2"/>` + jambs + stub;
     }
     return '';
   }
@@ -1896,6 +1910,15 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   });
   $('dims').addEventListener('change', e => { st.showDims = e.target.checked; render(); save(); });
   $('rooms').addEventListener('change', e => { st.showRooms = e.target.checked; render(); save(); });
+  // Puertas abiertas o cerradas: una sola preferencia para el plano, la impresión y la vista 3D
+  function setDoorsOpen(on){
+    setUiPref('puertasAbiertas', on);
+    $('doorsOpen').checked = on; $('v3dDoors').checked = on;
+    render();
+    if (v3.renderer && v3.open && !vr.session) build3D();
+  }
+  $('doorsOpen').addEventListener('change', e => setDoorsOpen(e.target.checked));
+  $('v3dDoors').addEventListener('change', e => setDoorsOpen(e.target.checked));
   $('undo').addEventListener('click', undo);
 
   $('floorbar').addEventListener('click', e => {
@@ -2631,26 +2654,29 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   }
 
   // ---- Puertas: marco y hoja de madera entreabierta ----
-  function buildDoors(p, base, outsideAt){
+  function buildDoors(p, base, outsideAt, fill){
     const R = st.rows, C = st.cols, m = st.meters, t = MT;
     const one = (horiz, line, k0, n, val) => {
       const L = n * m, a0 = k0 * m, a1 = a0 + L;
       const fixed = line * m;
       if (outsideAt(horiz, line, k0)){ bars(horiz, fixed, a0, a1, base, 1.6); return; }
       setFrame(0, 0, 0, 0);
-      // Marco
+      // Marco: ocupa el tramo del vano junto a la bisagra; el resto del vano se rellena con pared
       const tf = H3.thick / 2 + .01;
-      if (horiz){ pbox(a0, base, fixed - tf, a0 + .05, base + H3.door, fixed + tf, t.trim); pbox(a1 - .05, base, fixed - tf, a1, base + H3.door, fixed + tf, t.trim); pbox(a0, base + H3.door - .05, fixed - tf, a1, base + H3.door, fixed + tf, t.trim); }
-      else { pbox(fixed - tf, base, a0, fixed + tf, base + H3.door, a0 + .05, t.trim); pbox(fixed - tf, base, a1 - .05, fixed + tf, base + H3.door, a1, t.trim); pbox(fixed - tf, base + H3.door - .05, a0, fixed + tf, base + H3.door, a1, t.trim); }
+      const hingeEnd = val === 5 || val === 6;
+      const open = doorGeom(L).open;
+      const o0 = hingeEnd ? a1 - open : a0, o1 = hingeEnd ? a1 : a0 + open;
+      if (horiz){ pbox(o0, base, fixed - tf, o0 + .05, base + H3.door, fixed + tf, t.trim); pbox(o1 - .05, base, fixed - tf, o1, base + H3.door, fixed + tf, t.trim); pbox(o0, base + H3.door - .05, fixed - tf, o1, base + H3.door, fixed + tf, t.trim); }
+      else { pbox(fixed - tf, base, o0, fixed + tf, base + H3.door, o0 + .05, t.trim); pbox(fixed - tf, base, o1 - .05, fixed + tf, base + H3.door, o1, t.trim); pbox(fixed - tf, base + H3.door - .05, o0, fixed + tf, base + H3.door, o1, t.trim); }
+      if (fill && L - open > 0.005) fill(horiz, line, hingeEnd ? k0 : k0 + n - 1, hingeEnd ? a0 : o1, hingeEnd ? o0 : a1);
       // Hoja (misma lógica de bisagra y sentido que el plano 2D)
       let dir = horiz ? (line === R ? -1 : 1) : (line === C ? -1 : 1);
       if (val === 4 || val === 6) dir = -dir;
-      const hingeEnd = val === 5 || val === 6;
-      const leafL = L - .1;
+      const leafL = open - .1;
       let hx, hz, cx, cz, px, pz;
       if (horiz){ hx = hingeEnd ? a1 - .05 : a0 + .05; hz = fixed; cx = hingeEnd ? -1 : 1; cz = 0; px = 0; pz = dir; }
       else { hx = fixed; hz = hingeEnd ? a1 - .05 : a0 + .05; cx = 0; cz = hingeEnd ? -1 : 1; px = dir; pz = 0; }
-      const ang = 75 * Math.PI / 180;
+      const ang = doorsOpen() ? 75 * Math.PI / 180 : 0;   // abierta (75°) o cerrada (en el plano del muro)
       const vx = cx * Math.cos(ang) + px * Math.sin(ang), vz = cz * Math.cos(ang) + pz * Math.sin(ang);
       setFrame(hx + vx * leafL / 2, base + 1.0, hz + vz * leafL / 2, Math.atan2(-vz, vx));
       pbox(-leafL / 2, -1.0, -.02, leafL / 2, .99, .02, t.door);
@@ -2865,7 +2891,15 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     };
     for (let i = 0; i <= R; i++) line(true, i * m, C, j => p.h[i][j], j => [i - 1, j], j => [i, j]);
     for (let j = 0; j <= C; j++) line(false, j * m, R, i => p.v[i][j], i => [i, j - 1], i => [i, j]);
-    if (cap >= H3.door) buildDoors(p, base, (horiz, line2, k0) => horiz ? (ext(line2 - 1, k0) && ext(line2, k0)) : (ext(k0, line2 - 1) && ext(k0, line2)));
+    // Pared que completa el vano junto al marco de una puerta (con los acabados de cada cara)
+    const doorFill = (horiz, lineIdx, k, f0, f1) => {
+      const fixed = lineIdx * m;
+      const [ai, aj] = horiz ? [lineIdx - 1, k] : [k, lineIdx - 1], [bi, bj] = horiz ? [lineIdx, k] : [k, lineIdx];
+      setFrame(0, 0, 0, 0);
+      wall2(horiz, fixed, f0, f1, 0, H3.wall, faceSpec(ai, aj), faceSpec(bi, bj), !ext(ai, aj), !ext(bi, bj), true,
+            [regAt(ai, aj) && regAt(ai, aj).name, regAt(bi, bj) && regAt(bi, bj).name], 'wall');
+    };
+    if (cap >= H3.door) buildDoors(p, base, (horiz, line2, k0) => horiz ? (ext(line2 - 1, k0) && ext(line2, k0)) : (ext(k0, line2 - 1) && ext(k0, line2)), doorFill);
     if (level === 0) for (const r of info.regions) if (r.closed && /p[eé]rgola/i.test(r.name)) pergola(r.cells, base);
     if (showFurn) buildFurniture(p, base, info);
     return interior;
@@ -3910,6 +3944,7 @@ function doPost(e) {
   renderToolUI();
   initSync();
   renderLayerUI(); bindPzPanel(); updatePzPanel();
+  $('doorsOpen').checked = doorsOpen(); $('v3dDoors').checked = doorsOpen();
   // Si la página se abrió a través de la pantalla de contraseña, se ofrece olvidarla en este equipo
   if (window.__planoGate){
     const lb = $('lockBtn'); lb.hidden = false;
