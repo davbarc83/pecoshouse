@@ -103,6 +103,7 @@ main{overflow:auto;padding:24px;display:flex}
 .plansvg .jamb{stroke:var(--ink);stroke-linecap:butt}
 .plansvg .win{stroke:var(--window);fill:var(--sheet)}
 .plansvg .win-l{stroke:var(--window)}
+.plansvg .limite{stroke:var(--muted);fill:none}
 .plansvg .reja{stroke:var(--reja);fill:none;stroke-linecap:butt}
 .plansvg .hov{stroke:var(--hover);stroke-linecap:round;opacity:.85}
 .plansvg .hovc{fill:var(--hover);opacity:.18}
@@ -288,6 +289,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
         <label class="field">Metros por cuadro<input id="meters" type="number" min="0.1" step="0.1" value="1"></label>
         <label class="check"><input id="dims" type="checkbox" checked>Mostrar medidas de las paredes</label>
         <label class="check"><input id="rooms" type="checkbox" checked>Mostrar medidas de los ambientes</label>
+        <label class="check"><input id="showLimits" type="checkbox" checked>Mostrar los límites invisibles</label>
         <label class="check"><input id="doorsOpen" type="checkbox" checked>Puertas abiertas (plano y 3D)</label>
         <div class="stats" id="stats"></div>
       </div>
@@ -348,6 +350,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       <button type="button" data-tool="2" title="Puerta (2) — clic sobre una puerta para rotarla" aria-label="Puerta"><svg width="20" height="20" viewBox="0 0 18 18"><path d="M3 3 L3 15 M15 3 A12 12 0 0 1 3 15" fill="none" stroke="var(--door)" stroke-width="1.8"/></svg></button>
       <button type="button" data-tool="3" title="Ventana (3)" aria-label="Ventana"><svg width="20" height="20" viewBox="0 0 18 18"><rect x="2" y="7" width="14" height="4" fill="none" stroke="var(--window)" stroke-width="1.6"/><line x1="2" y1="9" x2="16" y2="9" stroke="var(--window)" stroke-width="1"/></svg></button>
       <button type="button" data-tool="7" title="Reja (6)" aria-label="Reja"><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="var(--reja)" stroke-width="1.4"><path d="M1.5 4 H16.5 M1.5 14 H16.5 M4 4 V14 M7.5 4 V14 M11 4 V14 M14.5 4 V14"/></svg></button>
+      <button type="button" data-tool="10" title="Límite invisible (7)" aria-label="Límite invisible"><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 9 H4.5 M7.8 9 H10.3 M13.5 9 H16" stroke-dasharray="none"/></svg></button>
       <button type="button" data-tool="mv" title="Mover (5)" aria-label="Mover"><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1.5 V16.5 M1.5 9 H16.5 M9 1.5 L6.8 3.7 M9 1.5 L11.2 3.7 M9 16.5 L6.8 14.3 M9 16.5 L11.2 14.3 M1.5 9 L3.7 6.8 M1.5 9 L3.7 11.2 M16.5 9 L14.3 6.8 M16.5 9 L14.3 11.2"/></svg></button>
       <button type="button" class="mvopt" id="grpBtn" title="Mover todo el grupo de muebles que se tocan" aria-label="Mover en grupo" aria-pressed="false" hidden><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg></button>
       <button type="button" class="mvopt" id="rotSelBtn" title="Girar 90° la selección (R)" aria-label="Girar selección" hidden><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 9 A5.5 5.5 0 1 1 12.6 4.8"/><path d="M13 1.8 L13 5.2 L9.6 5.2"/></svg></button>
@@ -436,7 +439,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   const svg = document.getElementById('plan');
   const tip = document.getElementById('tip');
   const $ = id => document.getElementById(id);
-  const TOOL_NAMES = { 0:'Borrando', 1:'Pared', 2:'Puerta', 3:'Ventana', 7:'Reja' };
+  const TOOL_NAMES = { 0:'Borrando', 1:'Pared', 2:'Puerta', 3:'Ventana', 7:'Reja', 10:'Límite' };
 
   // Íconos de muebles dibujados en un espacio de 100×100. La clave es una letra (se usa en el código compartido).
   const FURN = [
@@ -933,6 +936,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     return t === 'h' ? [x1, y1, x1 + L, y1] : [x1, y1, x1, y1 + L];
   }
 
+  const EDGE_CHARS = '0123456789a';   // carácter con el que cada tipo de borde viaja en los códigos (10 = límite invisible)
   const DOOR_CYCLE = [2, 5, 4, 6, 8, 9];   // batientes (cuatro variantes) y embutidas (la hoja se mete en el muro hacia el inicio o hacia el final)
   const doorsOpen = () => uiPref('puertasAbiertas', true);
   // La hoja mide 80 cm y, con el marco, el vano queda de 90 cm; el resto del vano de 1 m es pared.
@@ -1014,6 +1018,10 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     const wallW = Math.max(3, S * 0.12);
     if (val === 1){
       return `<line class="wall" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${wallW}"/>`;
+    }
+    if (val === 10){   // límite invisible: cierra el ambiente pero no es una pared
+      if (!uiPref('limites2d', true)) return '';
+      return `<line class="limite" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="1.6" stroke-dasharray="5 4"/>`;
     }
     if (val === 7){
       const tk = Math.max(3, S * 0.1), nb = 4;
@@ -1297,9 +1305,9 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     for (let i = 0; i <= st.rows; i++){
       let j = 0;
       while (j < st.cols){
-        if (!st.h[i][j]){ j++; continue; }
+        if (!st.h[i][j] || st.h[i][j] === 10){ j++; continue; }
         const start = j;
-        while (j < st.cols && st.h[i][j]) j++;
+        while (j < st.cols && st.h[i][j] && st.h[i][j] !== 10) j++;
         const len = j - start;
         out += label(PAD + (start + len / 2) * S, PAD + i * S + (i === 0 ? off : -off), len, false);
       }
@@ -1307,9 +1315,9 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     for (let j = 0; j <= st.cols; j++){
       let i = 0;
       while (i < st.rows){
-        if (!st.v[i][j]){ i++; continue; }
+        if (!st.v[i][j] || st.v[i][j] === 10){ i++; continue; }
         const start = i;
-        while (i < st.rows && st.v[i][j]) i++;
+        while (i < st.rows && st.v[i][j] && st.v[i][j] !== 10) i++;
         const len = i - start;
         out += label(PAD + j * S + (j === 0 ? off : -off), PAD + (start + len / 2) * S, len, true);
       }
@@ -1403,14 +1411,14 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   function fmt(n){ return (Math.round(n * 100) / 100).toLocaleString('es-AR'); }
   function updateStats(){
     let w = 0, d = 0, win = 0, fu = 0;
-    let rj = 0;
+    let rj = 0, lm = 0;
     st.h.forEach((r, i) => r.forEach((v, j) => {
-      if (v === 7) rj++;
+      if (v === 7) rj++; else if (v === 10) lm++;
       if (v === 1) w++; else if (v === 3) win++;
       else if (isDoor(v) && !(j > 0 && r[j - 1] === v)) d++;
     }));
     st.v.forEach((r, i) => r.forEach((v, j) => {
-      if (v === 7) rj++;
+      if (v === 7) rj++; else if (v === 10) lm++;
       if (v === 1) w++; else if (v === 3) win++;
       else if (isDoor(v) && !(i > 0 && st.v[i - 1][j] === v)) d++;
     }));
@@ -1420,7 +1428,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       `<span>Editando: <strong>Piso ${st.piso + 1}</strong>${st.piso === 1 ? ' (planta alta)' : ' (planta baja)'}</span>` +
       `<span>Superficie total: <strong>${fmt(st.cols * m)} × ${fmt(st.rows * m)} m</strong> (${fmt(st.cols * st.rows * m * m)} m²)</span>` +
       `<span>Ambientes cerrados: <strong>${lastRooms.length}</strong></span>` +
-      `<span>Paredes: <strong>${fmt(w * m)} m</strong>${rj ? ` · Rejas: <strong>${fmt(rj * m)} m</strong>` : ''}</span>` +
+      `<span>Paredes: <strong>${fmt(w * m)} m</strong>${rj ? ` · Rejas: <strong>${fmt(rj * m)} m</strong>` : ''}${lm ? ` · Límites invisibles: <strong>${fmt(lm * m)} m</strong>` : ''}</span>` +
       `<span>Puertas: <strong>${d}</strong> · Ventanas: <strong>${win}</strong> · Muebles: <strong>${fu}</strong></span>`;
   }
 
@@ -1829,6 +1837,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     '1': '<strong>Pared:</strong> clic cerca del borde de un cuadro para poner o quitar una pared. Mantén presionado y arrastra para trazar una línea recta.',
     '2': '<strong>Puerta:</strong> clic en un borde para colocar una puerta de 1 m, centrada en el vértice más cercano. Clic sobre una puerta existente para cambiar su variante: batiente (cuatro posiciones de bisagra y apertura) o embutida (la hoja se mete en el muro hacia un lado u otro y asoma una tira de 16 cm). Si es una puerta antigua de 50 cm, el primer clic la amplía a 1 m.',
     '3': '<strong>Ventana:</strong> clic en un borde para colocarla. Arrastra para hacer una ventana corrida.',
+    '10': '<strong>Límite invisible:</strong> se traza como una pared, pero no se ve en 3D ni en VR. Cierra el ambiente para que se calcule su superficie y permite, por ejemplo, un espacio exterior cubierto solo por el techo. En el plano se ve como una línea punteada (se puede ocultar en «Grilla, vista y escala»).',
     '7': '<strong>Reja:</strong> se traza igual que una pared (clic o arrastrando en línea recta). Cierra el ambiente pero deja ver a través; en 3D se ve con barrotes negros de 1,8 m (1 m en el piso 2, como baranda).',
     '0': '<strong>Borrar:</strong> cerca de un borde borra paredes, puertas y ventanas; sobre un mueble lo borra. Arrastra para borrar varios muebles.',
     'mv': '<strong>Mover:</strong> arrastra un mueble para moverlo con ajuste fino (el paso se elige en el panel de abajo). Con el botón <strong>Grupo</strong> activo (o manteniendo Shift) mueves el conjunto de muebles que se tocan. Toca un mueble para seleccionarlo: en el panel cambias sus medidas, lo empujas con las flechas, lo giras (R) o lo centras en el ambiente. Esc cancela.',
@@ -1959,6 +1968,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   });
   $('dims').addEventListener('change', e => { st.showDims = e.target.checked; render(); save(); });
   $('rooms').addEventListener('change', e => { st.showRooms = e.target.checked; render(); save(); });
+  $('showLimits').addEventListener('change', e => { setUiPref('limites2d', e.target.checked); render(); });
   // Puertas abiertas o cerradas: una sola preferencia para el plano, la impresión y la vista 3D
   function setDoorsOpen(on){
     setUiPref('puertasAbiertas', on);
@@ -2014,7 +2024,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   function encode(d){
     d = d || st;
     if (d === st) syncPiso();
-    const flat = a => a.map(r => r.join('')).join('');
+    const flat = a => a.map(r => r.map(v => EDGE_CHARS[v] || '0').join('')).join('');
     const parts = p => {
       const src = Array.isArray(p.pz) ? p.pz : cellsToPieces(p.f, d.rows, d.cols, Math.round((d.meters || 1) * 100));
       const fu = src.map(cleanPiece).filter(Boolean).map(z => `${z.k}.${z.x}.${z.y}.${z.w}.${z.d}.${z.o}`);
@@ -2059,11 +2069,11 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     return out;
   }
   function parseFloor(r, c, hs, vs, fs, ns, label, usePieces, cs){
-    if (!/^[0-9]*$/.test(hs + vs)) throw new Error(`El código contiene caracteres no válidos${label}.`);
+    if (!/^[0-9a]*$/.test(hs + vs)) throw new Error(`El código contiene caracteres no válidos${label}.`);
     if (hs.length !== (r + 1) * c || vs.length !== r * (c + 1)) throw new Error(`El código está incompleto o fue modificado${label}.`);
     const g = makeGrid(r, c);
-    for (let i = 0; i <= r; i++) g.h[i] = Array.from(hs.substr(i * c, c), Number);
-    for (let i = 0; i < r; i++) g.v[i] = Array.from(vs.substr(i * (c + 1), c + 1), Number);
+    for (let i = 0; i <= r; i++) g.h[i] = Array.from(hs.substr(i * c, c), ch => EDGE_CHARS.indexOf(ch));
+    for (let i = 0; i < r; i++) g.v[i] = Array.from(vs.substr(i * (c + 1), c + 1), ch => EDGE_CHARS.indexOf(ch));
     let pz = [];
     if (fs && usePieces){
       const list = fs.split(',');
@@ -2955,6 +2965,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       while (k < n){
         const val = valAt(k), o = out(k);
         if (val === 7){ setFrame(0, 0, 0, 0); bars(horiz, fixed, k * m, (k + 1) * m, base, Math.min(level > 0 ? 1.0 : H3.fence, cap)); setFrame(0, 0, 0, 0); k++; continue; }
+        if (val === 10){ k++; continue; }   // límite invisible: no se construye nada
         if (!val || (o && level > 0)){ k++; continue; }
         if (val === 1){
           const k0 = k, sk = sidesKey(k);
@@ -3049,8 +3060,8 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       sp.position.set(x, base + top, z);
       v3.labels.add(sp);
     };
-    for (let i = 0; i <= R; i++){ let j = 0; while (j < C){ if (!p.h[i][j]){ j++; continue; } const s0 = j; while (j < C && p.h[i][j]) j++; cota(j - s0, (s0 + (j - s0) / 2) * m, i * m); } }
-    for (let j = 0; j <= C; j++){ let i = 0; while (i < R){ if (!p.v[i][j]){ i++; continue; } const s0 = i; while (i < R && p.v[i][j]) i++; cota(i - s0, j * m, (s0 + (i - s0) / 2) * m); } }
+    for (let i = 0; i <= R; i++){ let j = 0; while (j < C){ if (!p.h[i][j] || p.h[i][j] === 10){ j++; continue; } const s0 = j; while (j < C && p.h[i][j] && p.h[i][j] !== 10) j++; cota(j - s0, (s0 + (j - s0) / 2) * m, i * m); } }
+    for (let j = 0; j <= C; j++){ let i = 0; while (i < R){ if (!p.v[i][j] || p.v[i][j] === 10){ i++; continue; } const s0 = i; while (i < R && p.v[i][j] && p.v[i][j] !== 10) i++; cota(i - s0, j * m, (s0 + (i - s0) / 2) * m); } }
   }
   function clearLabels(){
     if (!v3.labels) return;
@@ -3504,8 +3515,8 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   };
   function floorToText(p, title){
     const R = st.rows, C = st.cols, m = st.meters;
-    const hC = v => v === 1 ? '--' : v === 3 ? '==' : v === 7 ? '##' : isDoor(v) ? 'DD' : '  ';
-    const vC = v => v === 1 ? '|' : v === 3 ? ':' : v === 7 ? '#' : isDoor(v) ? 'D' : ' ';
+    const hC = v => v === 1 ? '--' : v === 3 ? '==' : v === 7 ? '##' : v === 10 ? '..' : isDoor(v) ? 'DD' : '  ';
+    const vC = v => v === 1 ? '|' : v === 3 ? ':' : v === 7 ? '#' : v === 10 ? '.' : isDoor(v) ? 'D' : ' ';
     // Ambientes cerrados, numerados; la etiqueta va en el cuadro libre más cercano al centro
     const info = regionsOf(p);
     const rooms = info.regions.filter(r => r.closed).map(r => {
@@ -3598,7 +3609,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       `PLANO: ${st.nombre || 'Plano'}`,
       `Escala: cada celda mide ${fmt(m)} × ${fmt(m)} m. Grilla de ${st.cols} × ${st.rows} celdas (${fmt(st.cols * m)} × ${fmt(st.rows * m)} m).`,
       'Orientación del dibujo: arriba = norte, abajo = sur, izquierda = oeste, derecha = este.',
-      'Bordes entre celdas: "--" y "|" = pared · "==" y ":" = ventana · "DD" y "D" = puerta (batiente o embutida en el muro) · "##" y "#" = reja.',
+      'Bordes entre celdas: "--" y "|" = pared · "==" y ":" = ventana · "DD" y "D" = puerta (batiente o embutida en el muro) · "##" y "#" = reja · ".." y "." = límite invisible (cierra el ambiente para medirlo, pero no hay pared).',
       'Las reglas indican el número de columna (arriba) y de fila (izquierda), contando desde 0.'
     ].join('\n');
     const blocks = floors.map(n => floorToText(st.pisos[n],
@@ -4020,6 +4031,7 @@ function doPost(e) {
     }
     if (e.key === '5'){ selectMove(); return; }
     if (e.key === '6'){ selectEdgeTool(7); return; }
+    if (e.key === '7'){ selectEdgeTool(10); return; }
     const map = { '1':'t1', '2':'t2', '3':'t3', '4':'t0' };
     if (map[e.key]){ const r = $(map[e.key]); r.checked = true; selectEdgeTool(+r.value); }
   });
@@ -4038,7 +4050,7 @@ function doPost(e) {
   renderToolUI();
   initSync();
   renderLayerUI(); bindPzPanel(); updatePzPanel();
-  $('doorsOpen').checked = doorsOpen(); $('v3dDoors').checked = doorsOpen();
+  $('doorsOpen').checked = doorsOpen(); $('v3dDoors').checked = doorsOpen(); $('showLimits').checked = uiPref('limites2d', true);
   // Si la página se abrió a través de la pantalla de contraseña, se ofrece olvidarla en este equipo
   if (window.__planoGate){
     const lb = $('lockBtn'); lb.hidden = false;
