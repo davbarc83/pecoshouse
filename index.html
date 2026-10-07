@@ -123,6 +123,24 @@ main{overflow:auto;padding:24px;display:flex}
 .frow{display:flex;align-items:center;gap:8px}
 .ftools{display:flex;gap:4px}
 .ftools button{width:36px;height:34px;padding:0;display:flex;align-items:center;justify-content:center}
+.ftools .lay.off{opacity:.55}
+.ftools .lay .slash{display:none}
+.ftools .lay.off .slash{display:inline}
+.ftools .lay.lockon{border-color:var(--hover);color:var(--hover);box-shadow:inset 0 0 0 1px var(--hover)}
+.plansvg .pz *{stroke-width:1.5;vector-effect:non-scaling-stroke}
+.pzpanel{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:30;width:min(285px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.45);font-size:.85rem}
+.pzpanel[hidden]{display:none}
+.pzhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pzhead button{padding:0 8px;height:26px;line-height:1;font-size:1.1rem}
+.pzrow{display:flex;gap:8px;align-items:end}
+.pzrow label{display:flex;flex-direction:column;gap:3px;color:var(--muted);flex:1;min-width:0}
+.pzrow input,.pzrow select{font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--border);border-radius:6px;padding:5px 7px;width:100%;min-width:0}
+.pzrow input:disabled{opacity:.5}
+.pzmove{align-items:center}
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;flex:1.4}
+.pad button{padding:6px 0;font-size:.8rem}
+.pzbtns button{flex:1;padding:6px 4px;font-size:.8rem;white-space:nowrap}
+.pzpanel button:disabled{opacity:.45;cursor:default}
 .ftools .mvopt{border-style:dashed}
 .ftools .mvopt[aria-pressed="true"]{border-style:solid;border-color:var(--hover);color:var(--hover);box-shadow:inset 0 0 0 1px var(--hover)}
 .ftools button[hidden]{display:none}
@@ -186,6 +204,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   .app{grid-template-columns:1fr}
   aside{border-right:0;border-bottom:1px solid var(--border);position:static;max-height:none}
   main{padding:12px}
+  .pzpanel{right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px))}
   .floorbar{top:auto;bottom:calc(14px + env(safe-area-inset-bottom,0px));right:12px}
 }
 #printArea{display:none}
@@ -313,6 +332,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     <div class="actions">
       <button id="undo" title="Ctrl+Z">Deshacer</button>
       <button id="clear" class="danger">Vaciar este piso</button>
+      <button id="lockBtn" hidden title="Olvida la contraseña guardada en este equipo; la página volverá a pedirla">Cerrar acceso</button>
     </div>
   </aside>
 
@@ -331,6 +351,11 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       <button type="button" class="mvopt" id="grpBtn" title="Mover todo el grupo de muebles que se tocan" aria-label="Mover en grupo" aria-pressed="false" hidden><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg></button>
       <button type="button" class="mvopt" id="rotSelBtn" title="Girar 90° la selección (R)" aria-label="Girar selección" hidden><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 9 A5.5 5.5 0 1 1 12.6 4.8"/><path d="M13 1.8 L13 5.2 L9.6 5.2"/></svg></button>
       <button type="button" data-tool="0" title="Borrar (4)" aria-label="Borrar"><svg width="20" height="20" viewBox="0 0 18 18"><path d="M4 4 L14 14 M14 4 L4 14" stroke="currentColor" stroke-width="2"/></svg></button>
+    </div>
+    <span class="fsep" aria-hidden="true"></span>
+    <div class="ftools" id="layerbar" role="group" aria-label="Capa de muebles">
+      <button type="button" class="lay" id="capaVer" aria-label="Mostrar u ocultar los muebles" aria-pressed="true"><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 9 C3.5 5 6 3.5 9 3.5 S14.5 5 16.5 9 C14.5 13 12 14.5 9 14.5 S3.5 13 1.5 9 Z"/><circle cx="9" cy="9" r="2.3"/><path class="slash" d="M3 15 L15 3"/></svg></button>
+      <button type="button" class="lay" id="capaLock" aria-label="Bloquear los muebles" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="8" width="11" height="7.5" rx="1.5"/><path d="M6 8 V5.8 A3 3 0 0 1 12 5.8 V8"/></svg></button>
     </div>
     <span class="fsep" aria-hidden="true"></span>
     <div class="fseg">
@@ -373,6 +398,31 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   </div>
 </div>
 <div id="printArea" aria-hidden="true"></div>
+<div class="pzpanel" id="pzPanel" role="group" aria-label="Pieza seleccionada" hidden>
+  <div class="pzhead"><strong id="pzTitle">Pieza</strong><button type="button" data-act="close" aria-label="Cerrar el panel" title="Cerrar">×</button></div>
+  <div class="pzrow">
+    <label>Ancho (cm)<input id="pzW" type="number" min="5" max="3000" step="1" inputmode="numeric"></label>
+    <label>Fondo (cm)<input id="pzD" type="number" min="5" max="3000" step="1" inputmode="numeric"></label>
+  </div>
+  <div class="pzrow pzmove">
+    <label>Paso<select id="pzStep"><option value="5">5 cm</option><option value="10">10 cm</option><option value="25">25 cm</option><option value="50">50 cm</option></select></label>
+    <div class="pad" role="group" aria-label="Mover la pieza">
+      <button type="button" data-n="up" aria-label="Subir" title="Subir (↑)">▲</button>
+      <button type="button" data-n="left" aria-label="Izquierda" title="Izquierda (←)">◀</button>
+      <button type="button" data-n="down" aria-label="Bajar" title="Bajar (↓)">▼</button>
+      <button type="button" data-n="right" aria-label="Derecha" title="Derecha (→)">▶</button>
+    </div>
+  </div>
+  <div class="pzrow pzbtns">
+    <button type="button" data-act="rot" title="Girar 90° (R)">Girar</button>
+    <button type="button" data-act="ch" title="Centrar horizontalmente en el ambiente">Centrar ↔</button>
+    <button type="button" data-act="cv" title="Centrar verticalmente en el ambiente">Centrar ↕</button>
+  </div>
+  <div class="pzrow pzbtns">
+    <button type="button" data-act="dup">Duplicar</button>
+    <button type="button" data-act="del" class="danger" title="Eliminar (Supr)">Eliminar</button>
+  </div>
+</div>
 <div class="toast" id="toast" role="status" hidden></div>
 <div class="syncbanner" id="syncBanner" role="alert" hidden><span id="syncBannerText"></span><span class="bbtns" id="syncBannerBtns"></span></div>
 <div id="tip" aria-hidden="true"></div>
@@ -417,9 +467,60 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   ];
   const FMAP = Object.fromEntries(FURN.map(f => [f.k, f]));
 
+  // ===== Piezas libres =====
+  // Cada mueble es una pieza { id, k, x, y, w, d, o } con medidas en centímetros, independiente de la grilla de paredes:
+  // (x, y) = esquina superior izquierda del rectángulo que ocupa en el plano; w y d = ancho y fondo del mueble sin girar;
+  // o = giro en pasos de 90°.
+  const FURN_DEF = { a:[140,190], b:[180,90], c:[160,90], d:[60,60], e:[70,70], f:[60,60], g:[60,50], h:[40,70], i:[90,90],
+                     j:[70,170], k:[150,60], l:[140,70], m:[60,60], n:[120,30], o:[90,270], p:[40,40], q:[100,50], r:[250,14],
+                     s:[90,90], t:[90,90], u:[60,60], v:[60,60], w:[60,60], x:[60,60], y:[80,25], z:[45,45] };
+  const BLOCK_TYPES = new Set(['a', 'c', 'k', 'l', 'i', 'j', 'o']);   // al convertir planos antiguos, un bloque rectangular de estos se une en una sola pieza
+  let pzCounter = 0;
+  const clampN = (v, a, b) => Math.min(b, Math.max(a, v));
+  const pzBox = z => ((z.o || 0) % 2) ? { w:z.d, d:z.w } : { w:z.w, d:z.d };
+  const pzRect = z => { const b = pzBox(z); return { x0:z.x, y0:z.y, x1:z.x + b.w, y1:z.y + b.d }; };
+  function cleanPiece(z){
+    if (!z || typeof z !== 'object' || !FMAP[z.k]) return null;
+    const x = Math.round(Number(z.x)), y = Math.round(Number(z.y)), w = Math.round(Number(z.w)), d = Math.round(Number(z.d)), o = Math.round(Number(z.o || 0));
+    if (![x, y, w, d, o].every(Number.isFinite)) return null;
+    return { k:z.k, x:clampN(x, -5000, 20000), y:clampN(y, -5000, 20000), w:clampN(w, 5, 3000), d:clampN(d, 5, 3000), o:((o % 4) + 4) % 4 };
+  }
+  // Planos anteriores: muebles por cuadro -> piezas (los bloques rectangulares de cama, mesa, placard, etc. se unen en una sola)
+  function cellsToPieces(f, R, C, cs){
+    const out = [];
+    if (!Array.isArray(f)) return out;
+    const at = (i, j) => (f[i] && f[i][j]) || null;
+    const one = (k, o, i, j) => ({ k, x:Math.round(j * cs), y:Math.round(i * cs), w:Math.round(cs), d:Math.round(cs), o });
+    const seen = Array.from({ length:R }, () => new Array(C).fill(false));
+    for (let i = 0; i < R; i++) for (let j = 0; j < C; j++){
+      const it = at(i, j);
+      if (!it || seen[i][j] || !FMAP[it.k]) continue;
+      const k = it.k, o = ((it.o || 0) % 4 + 4) % 4;
+      seen[i][j] = true;
+      if (!BLOCK_TYPES.has(k)){ out.push(one(k, o, i, j)); continue; }
+      const cells = [], stack = [[i, j]];
+      while (stack.length){
+        const [a, b] = stack.pop(); cells.push([a, b]);
+        for (const [na, nb] of [[a - 1, b], [a + 1, b], [a, b - 1], [a, b + 1]]){
+          if (na < 0 || nb < 0 || na >= R || nb >= C || seen[na][nb]) continue;
+          const x = at(na, nb);
+          if (x && x.k === k && ((x.o || 0) % 4 + 4) % 4 === o){ seen[na][nb] = true; stack.push([na, nb]); }
+        }
+      }
+      let i0 = R, i1 = -1, j0 = C, j1 = -1;
+      for (const [a, b] of cells){ i0 = Math.min(i0, a); i1 = Math.max(i1, a); j0 = Math.min(j0, b); j1 = Math.max(j1, b); }
+      if (cells.length === (i1 - i0 + 1) * (j1 - j0 + 1)){
+        const bw = Math.round((j1 - j0 + 1) * cs), bd = Math.round((i1 - i0 + 1) * cs);
+        out.push({ k, x:Math.round(j0 * cs), y:Math.round(i0 * cs), w:o % 2 ? bd : bw, d:o % 2 ? bw : bd, o });
+      } else for (const [a, b] of cells) out.push(one(k, o, a, b));
+    }
+    return out;
+  }
+
   // Estado: h = bordes horizontales (rows+1 × cols), v = bordes verticales (rows × cols+1)
   // Valores de borde: 0 vacío, 1 pared, 2 puerta, 3 ventana
-  // f = muebles (rows × cols): null o { k: clave, o: giro 0..3 }
+  // f = muebles del formato anterior (rows × cols); desde las piezas libres queda vacío y los muebles viven en pz
+  // pz = piezas libres de la planta activa (ver más abajo)
   // names = nombres de ambientes, indexados por un cuadro del ambiente ("fila_columna")
   let st = { rows:12, cols:12, cell:44, meters:1, showDims:true, showRooms:true, h:[], v:[], f:[], names:{} };
   const DEFAULT_NAME = 'Habitación';
@@ -429,7 +530,9 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   let hover = null;
   let drag = null;
   let moveShift = false;   // Shift presionado: invierte temporalmente el modo grupo
-  let mvSel = null;        // Selección de la herramienta Mover: lista de [fila, columna]
+  let mvSel = null;        // Selección de piezas: lista de ids (o null)
+  let pzGhost = null;      // Vista previa de la pieza que se va a colocar
+  let pzHover = null;      // Piezas resaltadas bajo el cursor
   const SLOTS = 10;
   const undoStacks = {};
   for (let n = 0; n <= SLOTS; n++) undoStacks[n] = [];   // el espacio 0 es el espejo del documento de Google Docs
@@ -471,15 +574,20 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   }
   // ---- Pisos: cada espacio tiene dos plantas con el mismo tamaño y escala ----
   // st.h, st.v, st.f y st.names apuntan siempre a la planta activa (st.pisos[st.piso]).
-  function blankFloor(r, c){ const g = makeGrid(r, c); return { h:g.h, v:g.v, f:g.f, names:{} }; }
+  function blankFloor(r, c){ const g = makeGrid(r, c); return { h:g.h, v:g.v, f:g.f, names:{}, pz:[] }; }
   function fitFloor(p){
-    const g = makeGrid(st.rows, st.cols, p && p.h, p && p.v, p && p.f);
+    const g = makeGrid(st.rows, st.cols, p && p.h, p && p.v, null);
     const names = (p && p.names && typeof p.names === 'object') ? p.names : {};
-    return { h:g.h, v:g.v, f:g.f, names };
+    // Si la planta trae piezas se usan; si viene del formato anterior (muebles por cuadro) se convierten
+    const pz = (p && Array.isArray(p.pz))
+      ? p.pz.map(cleanPiece).filter(Boolean)
+      : cellsToPieces(p && p.f, st.rows, st.cols, Math.round(st.meters * 100));
+    pz.forEach(z => { z.id = ++pzCounter; });
+    return { h:g.h, v:g.v, f:g.f, names, pz };
   }
   function ensurePisos(){
     if (!Array.isArray(st.pisos) || !st.pisos[0]){
-      st.pisos = [{ h:st.h, v:st.v, f:st.f, names:st.names }, null];
+      st.pisos = [{ h:st.h, v:st.v, f:st.f, names:st.names, pz:st.pz }, null];
       st.piso = 0;
     }
     st.pisos = [fitFloor(st.pisos[0]), fitFloor(st.pisos[1])];
@@ -487,16 +595,16 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   }
   function syncPiso(){
     if (!Array.isArray(st.pisos)) return;
-    st.pisos[st.piso] = { h:st.h, v:st.v, f:st.f, names:st.names };
+    st.pisos[st.piso] = { h:st.h, v:st.v, f:st.f, names:st.names, pz:st.pz };
   }
   function loadPisoRefs(n){
     st.piso = n === 1 ? 1 : 0;
     const p = st.pisos[st.piso];
-    st.h = p.h; st.v = p.v; st.f = p.f; st.names = p.names;
+    st.h = p.h; st.v = p.v; st.f = p.f; st.names = p.names; st.pz = p.pz;
   }
   function floorHasContent(p){
     const has = a => Array.isArray(a) && a.some(r => Array.isArray(r) && r.some(x => x));
-    return !!p && (has(p.h) || has(p.v) || has(p.f));
+    return !!p && (has(p.h) || has(p.v) || has(p.f) || (Array.isArray(p.pz) && p.pz.length > 0));
   }
   function usePiso(n){
     mvSel = null;
@@ -512,7 +620,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     if (d.mat3d) st.mat3d = JSON.parse(JSON.stringify(d.mat3d));
     mvSel = null;
     st.rows = d.rows; st.cols = d.cols; st.meters = d.meters;
-    st.pisos = d.pisos || [{ h:d.h, v:d.v, f:d.f, names:d.names || {} }, null];
+    st.pisos = d.pisos || [{ h:d.h, v:d.v, f:d.f, names:d.names || {}, pz:d.pz }, null];
     ensurePisos();
     loadPisoRefs(0);
     renderFloorUI();
@@ -638,6 +746,13 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   }
 
   function load(){
+    // Antes de convertir los muebles por cuadro a piezas libres, se guarda una copia de cada espacio
+    try {
+      for (let n = 0; n <= SLOTS; n++){
+        const raw = localStorage.getItem(SLOT_KEY(n));
+        if (raw && !raw.includes('"pz"') && !localStorage.getItem(SLOT_KEY(n) + '-v1')) localStorage.setItem(SLOT_KEY(n) + '-v1', raw);
+      }
+    } catch(_){}
     try {
       // Migración: el plano guardado por versiones anteriores pasa al espacio 1
       const old = localStorage.getItem(KEY);
@@ -680,9 +795,9 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     if (!d) return 'Vacío';
     const has = a => Array.isArray(a) && a.some(r => Array.isArray(r) && r.some(x => x));
     const floors = Array.isArray(d.pisos) && d.pisos[0] ? d.pisos : [d];
-    if (!floors.some(p => p && (has(p.h) || has(p.v) || has(p.f)))) return 'Vacío';
+    if (!floors.some(p => floorHasContent(p))) return 'Vacío';
     let txt = `${d.rows}×${d.cols}`;
-    if (floors[1] && (has(floors[1].h) || has(floors[1].v) || has(floors[1].f))) txt += ' · 2 pisos';
+    if (floors[1] && floorHasContent(floors[1])) txt += ' · 2 pisos';
     if (d.editado){
       const t = new Date(d.editado);
       const pad = x => String(x).padStart(2, '0');
@@ -926,12 +1041,56 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     return '';
   }
 
-  function drawFurn(i, j, item, extraClass){
-    const f = FMAP[item.k];
+  // Dibujo en 2D de cada pieza, con sus medidas reales. Coordenadas en cm con origen en el centro de la pieza.
+  const R_ = (x, y, w, h, rx, cls) => `<rect${cls ? ` class="${cls}"` : ''} x="${+x.toFixed(1)}" y="${+y.toFixed(1)}" width="${+w.toFixed(1)}" height="${+h.toFixed(1)}"${rx ? ` rx="${+rx.toFixed(1)}"` : ''}/>`;
+  const C_ = (w, d, rx, cls) => R_(-w / 2, -d / 2, w, d, rx, cls);
+  const L_ = (x1, y1, x2, y2, extra) => `<path d="M${+x1.toFixed(1)} ${+y1.toFixed(1)} L${+x2.toFixed(1)} ${+y2.toFixed(1)}"${extra || ''}/>`;
+  const P2D = {
+    a: (w, d) => {   // cama: almohadas arriba (cabecera) y borde de la manta
+      const n = w > 110 ? 2 : 1, g = 6, pw = (w - 16 - (n - 1) * g) / n, ph = Math.min(38, d * 0.2);
+      let s = C_(w, d, Math.min(8, w / 10), 'b');
+      for (let k = 0; k < n; k++) s += R_(-w / 2 + 8 + k * (pw + g), -d / 2 + 8, pw, ph, 5, 'b');
+      return s + L_(-w / 2, -d / 2 + d * 0.34, w / 2, -d / 2 + d * 0.34);
+    },
+    b: (w, d) => {   // sillón: respaldo arriba, apoyabrazos a los lados
+      const a = Math.min(16, w * 0.14), bk = d * 0.28, n = Math.max(1, Math.round((w - 2 * a) / 65));
+      let s = C_(w, d, 7, 'b') + L_(-w / 2 + a, -d / 2 + bk, w / 2 - a, -d / 2 + bk) + L_(-w / 2 + a, -d / 2 + bk, -w / 2 + a, d / 2) + L_(w / 2 - a, -d / 2 + bk, w / 2 - a, d / 2);
+      for (let k = 1; k < n; k++){ const x = -w / 2 + a + k * (w - 2 * a) / n; s += L_(x, -d / 2 + bk, x, d / 2); }
+      return s;
+    },
+    c: (w, d) => C_(w, d, Math.min(8, d / 8), 'b') + R_(-w / 2 + 7, -d / 2 + 7, w - 14, d - 14, 4, '').replace('/>', ' stroke-opacity=".4"/>'),
+    k: (w, d) => {   // placard: puertas y percha
+      const n = Math.max(1, Math.round(w / 60));
+      let s = C_(w, d, 0, 'b');
+      for (let k = 1; k < n; k++){ const x = -w / 2 + k * w / n; s += L_(x, -d / 2, x, d / 2); }
+      return s + L_(-w / 2 + 6, 0, w / 2 - 6, 0, ' stroke-dasharray="6 5" stroke-opacity=".6"');
+    },
+    l: (w, d) => C_(w, d, 3, 'b') + R_(-Math.min(24, w / 3), -d / 2 + 6, Math.min(48, w * 2 / 3), 5, 1, 'b') + R_(-Math.min(18, w / 4), -d / 2 + d * 0.42, Math.min(36, w / 2), 12, 2, ''),
+    i: (w, d) => C_(w, d, 2, 'b') + L_(-w / 2, -d / 2, w / 2, d / 2) + L_(w / 2, -d / 2, -w / 2, d / 2) + `<circle class="b" cx="0" cy="0" r="${Math.min(w, d) * 0.08}"/>`,
+    j: (w, d) => {   // bañera
+      const r = Math.min(w, d);
+      return C_(w, d, r * 0.18, 'b') + R_(-w / 2 + 7, -d / 2 + 7, w - 14, d - 14, r * 0.3, '') + `<circle cx="0" cy="${(d >= w ? d / 2 - 16 : 0)}" r="3"/>`;
+    },
+    o: (w, d) => {   // escalera: sube hacia el fondo (arriba)
+      const n = Math.max(2, Math.round(d / 27));
+      let s = C_(w, d, 0, 'b');
+      for (let k = 1; k < n; k++){ const y = -d / 2 + k * d / n; s += L_(-w / 2, y, w / 2, y); }
+      return s + L_(0, d / 2 - 10, 0, -d / 2 + 12) + L_(-7, -d / 2 + 22, 0, -d / 2 + 10) + L_(7, -d / 2 + 22, 0, -d / 2 + 10);
+    },
+    q: (w, d) => C_(w, d, Math.min(12, d / 3), 'b') + L_(-w * 0.3, 0, w * 0.3, 0, ' stroke-opacity=".4"'),
+    n: (w, d) => C_(w, d, 2, 'b') + L_(-w / 2 + 8, 0, w / 2 - 8, 0, ' stroke-opacity=".5"'),
+    r: (w, d) => C_(w, d, 0, 'b') + L_(-w / 2, d / 2 + 12, w / 2, d / 2 + 12, ' stroke-dasharray="6 8" stroke-opacity=".5"')
+  };
+  // Dibuja una pieza; dx, dy desplazan la pieza (arrastre en curso)
+  function pieceSVG(z, cls, dx, dy){
+    const f = FMAP[z.k];
     if (!f) return '';
-    const S = st.cell;
-    return `<g class="fu${extraClass ? ' ' + extraClass : ''}" transform="translate(${PAD + j * S} ${PAD + i * S}) scale(${S / 100}) rotate(${(item.o || 0) * 90} 50 50)">${f.d}</g>`;
+    const kk = st.cell / (st.meters * 100), b = pzBox(z);
+    const cx = z.x + (dx || 0) + b.w / 2, cy = z.y + (dy || 0) + b.d / 2;
+    const inner = P2D[z.k] ? P2D[z.k](z.w, z.d) : `<g transform="scale(${z.w / 100} ${z.d / 100}) translate(-50 -50)">${f.d}</g>`;
+    return `<g class="fu pz${cls ? ' ' + cls : ''}" transform="translate(${+(PAD + cx * kk).toFixed(2)} ${+(PAD + cy * kk).toFixed(2)}) rotate(${(z.o || 0) * 90}) scale(${+kk.toFixed(5)})">${inner}</g>`;
   }
+
 
   // Detección de ambientes cerrados: relleno por inundación. Cualquier borde ocupado (pared, puerta o ventana) cierra.
   function computeRooms(){
@@ -1128,15 +1287,16 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     if (st.piso === 1 && st.pisos && st.pisos[0] && (st.underOp == null ? 35 : st.underOp) > 0){
       const p = st.pisos[0];
       let uf = '', uo = '', uw = '';
-      for (let i = 0; i < st.rows; i++) for (let j = 0; j < st.cols; j++)
-        if (p.f[i] && p.f[i][j]) uf += drawFurn(i, j, p.f[i][j]);
+      if (furnVisible()) for (const z of (p.pz || [])) uf += pieceSVG(z);
       const ue = edgesSVG(p.h, p.v); uw = ue.walls; uo = ue.others;
       g += `<g class="under" opacity="${(st.underOp == null ? 35 : st.underOp) / 100}" pointer-events="none">${uf}${uo}${uw}</g>`;
     }
 
-    // Muebles
-    for (let i = 0; i < st.rows; i++) for (let j = 0; j < st.cols; j++)
-      if (st.f[i][j] && !(drag && drag.mode === 'mv' && drag.cells.some(c => c.i === i && c.j === j))) g += drawFurn(i, j, st.f[i][j]);
+    // Muebles: capa de piezas libres (las piezas que se arrastran se dibujan ya en su nueva posición)
+    if (furnVisible()){
+      const mv = drag && drag.mode === 'pz-move' && drag.moved ? drag : null;
+      for (const z of st.pz) g += (mv && mv.ids.has(z.id)) ? pieceSVG(z, '', mv.dx, mv.dy) : pieceSVG(z);
+    }
 
     // Aberturas primero, paredes encima
     const es = edgesSVG(st.h, st.v);
@@ -1146,27 +1306,36 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     roomMeta = [];
     if (st.showRooms) rooms.forEach((cells, idx) => { g += drawRoomLabel(cells, idx); });
 
-    if (tool === 'mv' && mvSel && !(drag && drag.mode === 'mv')){
-      mvSel = mvSel.filter(([i, j]) => st.f[i] && st.f[i][j]);
-      if (!mvSel.length) mvSel = null;
-      else for (const [i, j] of mvSel) g += `<rect class="selc" x="${PAD + j * st.cell}" y="${PAD + i * st.cell}" width="${st.cell}" height="${st.cell}"/>`;
-    }
-    if (drag && drag.mode === 'mv') g += drawMove();
-    if (hover && !(drag && drag.mode === 'mv')){
-      if (hover.t === 'c' && tool === 'mv'){
-        const cells = groupMode() ? furnGroup(hover.i, hover.j) : [[hover.i, hover.j]];
-        for (const [i, j] of cells) g += `<rect class="hovc" x="${PAD + j * S}" y="${PAD + i * S}" width="${S}" height="${S}"/>`;
-      } else if (hover.t === 'c'){
-        if (tool === 'f' && !drag) g += drawFurn(hover.i, hover.j, { k:furnSel, o:rot }, 'ghost');
-        else g += `<rect class="hovc" x="${PAD + hover.j * S}" y="${PAD + hover.i * S}" width="${S}" height="${S}"/>`;
-      } else {
-        const sp = hover.span;
-        const [x1, y1, x2, y2] = sp ? edgeCoords(sp.t, sp.i, sp.j, sp.n) : edgeCoords(hover.t, hover.i, hover.j);
-        g += `<line class="hov" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${Math.max(4, S * 0.16)}"/>`;
+    // Selección, resaltado y vista previa de las piezas
+    if (furnVisible()){
+      if (mvSel){
+        const ids = new Set(mvSel);
+        mvSel = st.pz.filter(z => ids.has(z.id)).map(z => z.id);
+        if (!mvSel.length) mvSel = null;
       }
+      const sk = st.cell / (st.meters * 100);
+      const box = (z, cls, dx, dy) => {
+        const r = pzRect(z);
+        return `<rect class="${cls}" x="${+(PAD + (r.x0 + (dx || 0)) * sk).toFixed(2)}" y="${+(PAD + (r.y0 + (dy || 0)) * sk).toFixed(2)}" width="${+((r.x1 - r.x0) * sk).toFixed(2)}" height="${+((r.y1 - r.y0) * sk).toFixed(2)}"/>`;
+      };
+      if (mvSel && (tool === 'mv' || tool === 'f')){
+        const mv = drag && drag.mode === 'pz-move' && drag.moved ? drag : null;
+        for (const z of selPieces()) g += box(z, 'selc', mv ? mv.dx : 0, mv ? mv.dy : 0);
+      }
+      if (pzHover && !drag) for (const id of pzHover){ const z = st.pz.find(q => q.id === id); if (z) g += box(z, 'hovc'); }
+      if (tool === 'f' && !furnLocked()){
+        const gz = (drag && drag.mode === 'pz-new') ? dragGhost(drag) : pzGhost;
+        if (gz) g += pieceSVG(gz, 'ghost') + box(gz, 'hovc');
+      }
+    }
+    if (hover && hover.t !== 'c'){
+      const sp = hover.span;
+      const [x1, y1, x2, y2] = sp ? edgeCoords(sp.t, sp.i, sp.j, sp.n) : edgeCoords(hover.t, hover.i, hover.j);
+      g += `<line class="hov" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${Math.max(4, S * 0.16)}"/>`;
     }
     svg.innerHTML = g;
     updateStats();
+    updatePzPanel();
   }
 
   function fmt(n){ return (Math.round(n * 100) / 100).toLocaleString('es-AR'); }
@@ -1183,7 +1352,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       if (v === 1) w++; else if (v === 3) win++;
       else if (isDoor(v) && !(i > 0 && st.v[i - 1][j] === v)) d++;
     }));
-    st.f.forEach(r => r.forEach(x => { if (x) fu++; }));
+    fu = (st.pz || []).length;
     const m = st.meters;
     $('stats').innerHTML =
       `<span>Editando: <strong>Piso ${st.piso + 1}</strong>${st.piso === 1 ? ' (planta alta)' : ' (planta baja)'}</span>` +
@@ -1193,58 +1362,74 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       `<span>Puertas: <strong>${d}</strong> · Ventanas: <strong>${win}</strong> · Muebles: <strong>${fu}</strong></span>`;
   }
 
-  // ---- Mover muebles ----
-  // Grupo conectado: muebles que se tocan por un lado (no en diagonal)
-  function furnGroup(i, j){
-    const out = [], seen = new Set([i + '_' + j]), stack = [[i, j]];
+  // ---- Piezas: capas, selección, movimiento y medidas ----
+  const furnVisible = () => uiPref('capaMuebles', true);
+  const furnLocked = () => uiPref('bloqMuebles', false);
+  function furnOK(){
+    if (!furnVisible()){ toast('Los muebles están ocultos. Pulsa el ojo de la barra para mostrarlos.'); return false; }
+    if (furnLocked()){ toast('Los muebles están bloqueados. Pulsa el candado de la barra para desbloquearlos.'); return false; }
+    return true;
+  }
+  const stepCm = () => { const v = uiPref('paso', 10); return [5, 10, 25, 50].includes(v) ? v : 10; };
+  const snap = v => Math.round(v / stepCm()) * stepCm();
+  const groupMode = () => uiPref('grupo', false) !== moveShift;
+  const planW = () => st.cols * st.meters * 100, planH = () => st.rows * st.meters * 100;
+  const selPieces = () => { if (!mvSel) return []; const s = new Set(mvSel); return st.pz.filter(z => s.has(z.id)); };
+  function unionRect(list){
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const z of list){ const r = pzRect(z); x0 = Math.min(x0, r.x0); y0 = Math.min(y0, r.y0); x1 = Math.max(x1, r.x1); y1 = Math.max(y1, r.y1); }
+    return { x0, y0, x1, y1 };
+  }
+  // Conjunto de piezas que se tocan (o se superponen), a partir de una
+  function pzGroup(z){
+    const rects = new Map(st.pz.map(q => [q.id, pzRect(q)])), seen = new Set([z.id]), stack = [z.id];
     while (stack.length){
-      const [a, b] = stack.pop();
-      out.push([a, b]);
-      for (const [na, nb] of [[a - 1, b], [a + 1, b], [a, b - 1], [a, b + 1]]){
-        const k = na + '_' + nb;
-        if (na < 0 || nb < 0 || na >= st.rows || nb >= st.cols || seen.has(k) || !st.f[na][nb]) continue;
-        seen.add(k); stack.push([na, nb]);
+      const a = rects.get(stack.pop());
+      for (const q of st.pz){
+        if (seen.has(q.id)) continue;
+        const b = rects.get(q.id);
+        if (a.x0 <= b.x1 + 1 && b.x0 <= a.x1 + 1 && a.y0 <= b.y1 + 1 && b.y0 <= a.y1 + 1){ seen.add(q.id); stack.push(q.id); }
       }
     }
-    return out;
+    return [...seen];
   }
-  // ¿Puede ubicarse el grupo desplazado (di, dj)? No sale de la grilla ni pisa otros muebles
-  function moveValid(m){
-    const inGroup = new Set(m.cells.map(c => c.i + '_' + c.j));
-    return m.cells.every(c => {
-      const ni = c.i + m.di, nj = c.j + m.dj;
-      if (ni < 0 || nj < 0 || ni >= st.rows || nj >= st.cols) return false;
-      return !st.f[ni][nj] || inGroup.has(ni + '_' + nj);
-    });
-  }
-  function drawMove(){
-    const S = st.cell, m = drag;
-    let g = '';
-    const ok = moveValid(m);
-    for (const c of m.cells){
-      g += `<rect class="mvsrc" x="${PAD + c.j * S}" y="${PAD + c.i * S}" width="${S}" height="${S}"/>`;
-      const ni = c.i + m.di, nj = c.j + m.dj;
-      if (ni < 0 || nj < 0 || ni >= st.rows || nj >= st.cols) continue;
-      if (!ok) g += `<rect class="mvbad" x="${PAD + nj * S}" y="${PAD + ni * S}" width="${S}" height="${S}"/>`;
-      g += drawFurn(ni, nj, c.item, 'ghost');
+  const cmAt = ev => { const { fx, fy } = toGrid(ev), cs = st.meters * 100; return { px:fx * cs, py:fy * cs }; };
+  function pieceAt(px, py){
+    for (let k = st.pz.length - 1; k >= 0; k--){
+      const r = pzRect(st.pz[k]);
+      if (px >= r.x0 && px <= r.x1 && py >= r.y0 && py <= r.y1) return st.pz[k];
     }
-    return g;
+    return null;
   }
-  const groupMode = () => uiPref('grupo', false) !== moveShift;
-  function finishMove(){
-    const m = drag;
-    if (!m || m.mode !== 'mv') return;
-    if ((m.di || m.dj) && moveValid(m)){
-      snapshot();
-      for (const c of m.cells) st.f[c.i][c.j] = null;
-      for (const c of m.cells) st.f[c.i + m.di][c.j + m.dj] = { k:c.item.k, o:c.item.o || 0 };
-      hover = { t:'c', i:m.anchor.i + m.di, j:m.anchor.j + m.dj };
-      mvSel = m.cells.map(c => [c.i + m.di, c.j + m.dj]);
-      save();
-    } else {
-      // Toque sin arrastrar (o movimiento inválido): queda seleccionado
-      mvSel = m.cells.map(c => [c.i, c.j]);
-    }
+  function removePiece(id){
+    const k = st.pz.findIndex(z => z.id === id);
+    if (k >= 0) st.pz.splice(k, 1);
+    if (mvSel){ mvSel = mvSel.filter(x => x !== id); if (!mvSel.length) mvSel = null; }
+  }
+  // Pieza «fantasma» que se colocaría con un clic en (px, py)
+  function ghostAt(px, py){
+    if (px < 0 || py < 0 || px > planW() || py > planH()) return null;
+    const def = FURN_DEF[furnSel] || [60, 60], o = rot, bw = o % 2 ? def[1] : def[0], bd = o % 2 ? def[0] : def[1];
+    return { k:furnSel, x:snap(px - bw / 2), y:snap(py - bd / 2), w:def[0], d:def[1], o };
+  }
+  function dragGhost(d){
+    if (d.r){ const odd = d.o % 2; return { k:d.k, x:d.r.x, y:d.r.y, w:odd ? d.r.bd : d.r.bw, d:odd ? d.r.bw : d.r.bd, o:d.o }; }
+    return ghostAt(d.sx, d.sy);
+  }
+  function placePiece(d){
+    if (d.sx < 0 || d.sy < 0 || d.sx > planW() || d.sy > planH()) return;
+    const g = dragGhost(d);
+    if (!g) return;
+    const z = Object.assign(cleanPiece(g), { id:++pzCounter }), b = pzBox(z);
+    z.x = clampN(z.x, 0, Math.max(0, planW() - b.w)); z.y = clampN(z.y, 0, Math.max(0, planH() - b.d));
+    snapshot();
+    st.pz.push(z);
+    mvSel = [z.id];
+    save();
+  }
+  function pzTip(ev, text){
+    tip.textContent = text; tip.style.display = 'block';
+    tip.style.left = (ev.clientX + 14) + 'px'; tip.style.top = (ev.clientY + 14) + 'px';
   }
   let toastTimer = null;
   function toast(msg, ms){
@@ -1282,24 +1467,137 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
         [['Abrir Google Docs', () => { const x = window.open(url, '_blank'); if (x){ try { x.opener = null; } catch(_){} } }], ['Cerrar', () => {}]]);
     }, 900);
   }
-  // Gira 90° en sentido horario la selección, sobre el centro de su rectángulo
+  // Gira 90° en sentido horario la selección, sobre el centro de su conjunto
   function rotateSelection(){
-    const cells = (mvSel || []).filter(([i, j]) => st.f[i] && st.f[i][j]);
-    if (!cells.length){ toast('Toca un mueble para seleccionarlo y luego gíralo.'); return; }
-    let minI = Infinity, maxI = -1, minJ = Infinity, maxJ = -1;
-    for (const [i, j] of cells){ minI = Math.min(minI, i); maxI = Math.max(maxI, i); minJ = Math.min(minJ, j); maxJ = Math.max(maxJ, j); }
-    const hgt = maxI - minI, wid = maxJ - minJ;
-    const top = Math.round(minI + hgt / 2 - wid / 2), left = Math.round(minJ + wid / 2 - hgt / 2);
-    const moves = cells.map(([i, j]) => ({ from:[i, j], to:[top + (j - minJ), left + (hgt - (i - minI))], item:st.f[i][j] }));
-    const inSel = new Set(cells.map(([i, j]) => i + '_' + j));
-    const ok = moves.every(({ to:[a, b] }) => a >= 0 && b >= 0 && a < st.rows && b < st.cols && (!st.f[a][b] || inSel.has(a + '_' + b)));
-    if (!ok){ toast('No hay espacio libre para girarlo en esa posición.'); return; }
+    if (!furnOK()) return;
+    const list = selPieces();
+    if (!list.length){ toast('Toca un mueble para seleccionarlo y luego gíralo.'); return; }
     snapshot();
-    for (const mv of moves) st.f[mv.from[0]][mv.from[1]] = null;
-    for (const mv of moves) st.f[mv.to[0]][mv.to[1]] = { k:mv.item.k, o:((mv.item.o || 0) + 1) % 4 };
-    mvSel = moves.map(mv => mv.to);
+    const u = unionRect(list), ccx = (u.x0 + u.x1) / 2, ccy = (u.y0 + u.y1) / 2;
+    for (const z of list){
+      const r = pzRect(z), cx = (r.x0 + r.x1) / 2, cy = (r.y0 + r.y1) / 2;
+      const ncx = ccx - (cy - ccy), ncy = ccy + (cx - ccx);    // 90° en sentido horario (el eje y crece hacia abajo)
+      z.o = ((z.o || 0) + 1) % 4;
+      const b = pzBox(z);
+      z.x = Math.round(ncx - b.w / 2); z.y = Math.round(ncy - b.d / 2);
+    }
+    const v = unionRect(list);
+    const sx = v.x0 < 0 ? -v.x0 : (v.x1 > planW() ? planW() - v.x1 : 0), sy = v.y0 < 0 ? -v.y0 : (v.y1 > planH() ? planH() - v.y1 : 0);
+    if (sx || sy) for (const z of list){ z.x += sx; z.y += sy; }
     render(); save();
   }
+  function nudge(dx, dy){
+    if (!furnOK()) return;
+    const list = selPieces();
+    if (!list.length) return;
+    const u = unionRect(list);
+    dx = clampN(dx, -u.x0, planW() - u.x1); dy = clampN(dy, -u.y0, planH() - u.y1);
+    if (!dx && !dy) return;
+    snapshot();
+    for (const z of list){ z.x += dx; z.y += dy; }
+    render(); save();
+  }
+  // Centra la selección en el ambiente cerrado donde está: axis 'h' (horizontal), 'v' (vertical) o 'hv' (ambos)
+  function centerSel(axis){
+    if (!furnOK()) return;
+    const list = selPieces();
+    if (!list.length) return;
+    syncPiso();
+    const p = st.pisos[st.piso], cs = st.meters * 100, u = unionRect(list);
+    const ci = Math.floor(((u.y0 + u.y1) / 2) / cs), cj = Math.floor(((u.x0 + u.x1) / 2) / cs);
+    if (ci < 0 || cj < 0 || ci >= st.rows || cj >= st.cols){ toast('La pieza está fuera del plano.'); return; }
+    const info = regionsOf(p), reg = info.regions[info.id[ci][cj]];
+    if (!reg || !reg.closed){ toast('Para centrarla, la pieza debe estar dentro de un ambiente cerrado.'); return; }
+    let i0 = Infinity, i1 = -1, j0 = Infinity, j1 = -1;
+    for (const [i, j] of reg.cells){ i0 = Math.min(i0, i); i1 = Math.max(i1, i); j0 = Math.min(j0, j); j1 = Math.max(j1, j); }
+    let dx = 0, dy = 0;
+    if (axis === 'h' || axis === 'hv') dx = Math.round(((j0 + j1 + 1) * cs / 2) - (u.x0 + u.x1) / 2);
+    if (axis === 'v' || axis === 'hv') dy = Math.round(((i0 + i1 + 1) * cs / 2) - (u.y0 + u.y1) / 2);
+    if (!dx && !dy){ toast('Ya está centrada.'); return; }
+    snapshot();
+    for (const z of list){ z.x += dx; z.y += dy; }
+    render(); save();
+  }
+  function applySize(){
+    const list = selPieces();
+    if (list.length !== 1){ updatePzPanel(); return; }
+    if (!furnOK()){ updatePzPanel(); return; }
+    const z = list[0];
+    const w = Math.round(+$('pzW').value), d = Math.round(+$('pzD').value);
+    if (!(w >= 5 && d >= 5)){ toast('Las medidas deben ser de al menos 5 cm.'); updatePzPanel(); return; }
+    const nw = Math.min(w, 3000), nd = Math.min(d, 3000);
+    if (nw === z.w && nd === z.d) return;
+    snapshot();
+    const r = pzRect(z), cx = (r.x0 + r.x1) / 2, cy = (r.y0 + r.y1) / 2;
+    z.w = nw; z.d = nd;
+    const b = pzBox(z);
+    z.x = Math.round(cx - b.w / 2); z.y = Math.round(cy - b.d / 2);
+    render(); save();
+  }
+  function duplicateSel(){
+    if (!furnOK()) return;
+    const list = selPieces();
+    if (!list.length) return;
+    const u = unionRect(list), off = stepCm() * 2;
+    const dx = Math.min(off, Math.max(0, planW() - u.x1)), dy = Math.min(off, Math.max(0, planH() - u.y1));
+    snapshot();
+    const copies = list.map(z => Object.assign({}, z, { id:++pzCounter, x:z.x + dx, y:z.y + dy }));
+    st.pz.push(...copies);
+    mvSel = copies.map(z => z.id);
+    render(); save();
+  }
+  function deleteSel(){
+    if (!furnOK()) return;
+    const list = selPieces();
+    if (!list.length) return;
+    snapshot();
+    const ids = new Set(list.map(z => z.id));
+    st.pz = st.pz.filter(z => !ids.has(z.id));
+    mvSel = null;
+    render(); save();
+  }
+  // Panel de medidas y posición de la selección
+  function updatePzPanel(){
+    const panel = $('pzPanel');
+    if (!panel) return;
+    const list = ((tool === 'mv' || tool === 'f') && furnVisible()) ? selPieces() : [];
+    if (!list.length){ panel.hidden = true; return; }
+    panel.hidden = false;
+    const one = list.length === 1, lock = furnLocked();
+    $('pzTitle').textContent = one ? FMAP[list[0].k].n : `${list.length} piezas`;
+    const setv = (id, v) => { const el = $(id); if (document.activeElement !== el) el.value = v; el.disabled = !one || lock; };
+    setv('pzW', one ? list[0].w : ''); setv('pzD', one ? list[0].d : '');
+    $('pzStep').value = String(stepCm());
+    panel.querySelectorAll('button[data-act], button[data-n]').forEach(b => { b.disabled = lock; });
+  }
+  function bindPzPanel(){
+    $('pzW').addEventListener('change', applySize);
+    $('pzD').addEventListener('change', applySize);
+    ['pzW', 'pzD'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); }));
+    $('pzStep').addEventListener('change', e => { setUiPref('paso', +e.target.value); render(); });
+    $('pzPanel').addEventListener('click', e => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      const s = stepCm();
+      if (b.dataset.n){ const [dx, dy] = { up:[0, -s], down:[0, s], left:[-s, 0], right:[s, 0] }[b.dataset.n]; nudge(dx, dy); }
+      else if (b.dataset.act === 'rot') rotateSelection();
+      else if (b.dataset.act === 'ch') centerSel('h');
+      else if (b.dataset.act === 'cv') centerSel('v');
+      else if (b.dataset.act === 'dup') duplicateSel();
+      else if (b.dataset.act === 'del') deleteSel();
+      else if (b.dataset.act === 'close'){ mvSel = null; render(); }
+    });
+  }
+  // Capas: mostrar/ocultar y bloquear los muebles
+  function renderLayerUI(){
+    const vis = furnVisible(), lock = furnLocked();
+    const b1 = $('capaVer'), b2 = $('capaLock');
+    b1.setAttribute('aria-pressed', String(vis)); b1.classList.toggle('off', !vis);
+    b1.title = vis ? 'Ocultar los muebles' : 'Mostrar los muebles';
+    b2.setAttribute('aria-pressed', String(lock)); b2.classList.toggle('lockon', lock);
+    b2.title = lock ? 'Desbloquear los muebles' : 'Bloquear los muebles (se ven, pero no se pueden tocar)';
+  }
+  function ensureFurnVisible(){ if (!furnVisible()){ setUiPref('capaMuebles', true); renderLayerUI(); } }
 
   // ---- Interacción con el plano ----
   svg.addEventListener('pointerdown', ev => {
@@ -1307,24 +1605,21 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     if (nameEl){ ev.preventDefault(); setTimeout(() => startNameEdit(nameEl), 0); return; }
     let target = null;
     if (tool === 'mv'){
-      const c = hitCell(ev);
-      if (!c || !st.f[c.i][c.j]){ if (mvSel){ mvSel = null; render(); } return; }
+      if (!furnOK()) return;
+      const { px, py } = cmAt(ev);
+      const z = pieceAt(px, py);
+      if (!z){ if (mvSel){ mvSel = null; render(); } return; }
       moveShift = ev.shiftKey;
-      const cells = (groupMode() ? furnGroup(c.i, c.j) : [[c.i, c.j]])
-        .map(([i, j]) => ({ i, j, item:{ k:st.f[i][j].k, o:st.f[i][j].o || 0 } }));
-      drag = { mode:'mv', cells, anchor:{ i:c.i, j:c.j }, di:0, dj:0 };
-      target = c;
+      // Si se toca una pieza que ya está seleccionada, se mueve toda la selección
+      mvSel = (mvSel && mvSel.includes(z.id)) ? mvSel.slice() : (groupMode() ? pzGroup(z) : [z.id]);
+      drag = { mode:'pz-move', ids:new Set(mvSel), sx:px, sy:py, cx:ev.clientX, cy:ev.clientY, u:unionRect(selPieces()), dx:0, dy:0, moved:false };
     } else if (tool === 'f'){
-      const c = hitCell(ev);
-      if (!c) return;
-      snapshot();
-      const cur = st.f[c.i][c.j];
-      const val = (cur && cur.k === furnSel && (cur.o || 0) === rot) ? null : { k:furnSel, o:rot };
-      st.f[c.i][c.j] = val;
-      drag = { mode:'f', val, last:keyE(c) };
-      target = c;
+      if (!furnOK()) return;
+      const { px, py } = cmAt(ev);
+      drag = { mode:'pz-new', k:furnSel, o:rot, sx:px, sy:py, cx:ev.clientX, cy:ev.clientY, r:null };
     } else {
-      const e = hitEdge(ev);
+      let e = hitEdge(ev);
+      if (e && tool === 0 && getE(e) === 0) e = null;     // Borrar solo actúa sobre bordes que tienen algo
       if (e){
         snapshot();
         const cur = getE(e);
@@ -1349,22 +1644,27 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
         target = e;
         showTip(ev);
       } else if (tool === 0){
-        const c = hitCell(ev);
-        if (!c) return;
+        // Borrar un mueble: solo si la capa está visible; si está bloqueada, se avisa
+        if (!furnVisible()) return;
+        const { px, py } = cmAt(ev);
+        const z = pieceAt(px, py);
+        if (!z) return;
+        if (furnLocked()){ furnOK(); return; }
         snapshot();
-        st.f[c.i][c.j] = null;
-        drag = { mode:'f', val:null, last:keyE(c) };
-        target = c;
+        removePiece(z.id);
+        drag = { mode:'pz-erase' };
       } else return;
     }
     ev.preventDefault();
     hover = target;
+    pzGhost = null; pzHover = null;
     try { svg.setPointerCapture(ev.pointerId); } catch(_){}
     render();
   });
 
+  let lastHoverKey = '';
   svg.addEventListener('pointermove', ev => {
-    let h;
+    let h = null;
     moveShift = ev.shiftKey;
     if (drag){
       if (drag.mode === 'e'){
@@ -1381,29 +1681,56 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
           drag.last = keyE(h);
         }
         showTip(ev);
-      } else if (drag.mode === 'mv'){
-        const { fx, fy } = toGrid(ev);
-        drag.di = Math.floor(fy) - drag.anchor.i;
-        drag.dj = Math.floor(fx) - drag.anchor.j;
-        tip.textContent = drag.cells.length === 1 ? 'Moviendo 1 pieza' : `Moviendo ${drag.cells.length} piezas`;
-        tip.style.display = 'block';
-        tip.style.left = (ev.clientX + 14) + 'px';
-        tip.style.top = (ev.clientY + 14) + 'px';
-        h = null;
-      } else {
-        h = hitCell(ev);
-        if (h && keyE(h) !== drag.last){ st.f[h.i][h.j] = drag.val ? { k:drag.val.k, o:drag.val.o } : null; drag.last = keyE(h); }
+      } else if (drag.mode === 'pz-move'){
+        const { px, py } = cmAt(ev);
+        if (!drag.moved && Math.hypot(ev.clientX - drag.cx, ev.clientY - drag.cy) > 4) drag.moved = true;
+        if (drag.moved){
+          const u = drag.u;
+          const dx = clampN(snap(u.x0 + (px - drag.sx)) - u.x0, -u.x0, planW() - u.x1);
+          const dy = clampN(snap(u.y0 + (py - drag.sy)) - u.y0, -u.y0, planH() - u.y1);
+          drag.dx = Math.round(dx); drag.dy = Math.round(dy);
+          pzTip(ev, `${drag.ids.size === 1 ? 'Moviendo 1 pieza' : 'Moviendo ' + drag.ids.size + ' piezas'} · X ${Math.round(u.x0 + drag.dx)} cm · Y ${Math.round(u.y0 + drag.dy)} cm`);
+        }
+      } else if (drag.mode === 'pz-new'){
+        const { px, py } = cmAt(ev);
+        if (!drag.r && Math.hypot(ev.clientX - drag.cx, ev.clientY - drag.cy) > 6) drag.r = { x:0, y:0, bw:10, bd:10 };
+        if (drag.r){
+          const ax = snap(drag.sx), ay = snap(drag.sy), bx = snap(px), by = snap(py);
+          drag.r = { x:Math.min(ax, bx), y:Math.min(ay, by), bw:Math.max(10, Math.abs(bx - ax)), bd:Math.max(10, Math.abs(by - ay)) };
+          const odd = drag.o % 2;
+          pzTip(ev, `${FMAP[drag.k].n}: ${odd ? drag.r.bd : drag.r.bw} × ${odd ? drag.r.bw : drag.r.bd} cm`);
+        }
+      } else if (drag.mode === 'pz-erase'){
+        const { px, py } = cmAt(ev);
+        const z = pieceAt(px, py);
+        if (z) removePiece(z.id);
       }
     } else {
-      h = (tool === 'f' || tool === 'mv') ? hitCell(ev) : (hitEdge(ev) || (tool === 0 ? hitCell(ev) : null));
-      if (h && h.t !== 'c'){
-        if (tool === 2) h.span = doorTarget(ev, h).span;
-        else if (tool === 0 && isDoor(getE(h))) h.span = doorSpanAt(h);
+      // Sin arrastre: resaltados y vista previa
+      pzGhost = null; pzHover = null;
+      if (tool === 'f'){
+        if (furnVisible() && !furnLocked()){ const { px, py } = cmAt(ev); pzGhost = ghostAt(px, py); }
+      } else if (tool === 'mv'){
+        if (furnVisible() && !furnLocked()){
+          const { px, py } = cmAt(ev), z = pieceAt(px, py);
+          if (z) pzHover = groupMode() ? pzGroup(z) : [z.id];
+        }
+      } else {
+        h = hitEdge(ev);
+        if (h && tool === 0 && getE(h) === 0) h = null;
+        if (h){
+          if (tool === 2) h.span = doorTarget(ev, h).span;
+          else if (tool === 0 && isDoor(getE(h))) h.span = doorSpanAt(h);
+        } else if (tool === 0 && furnVisible()){
+          const { px, py } = cmAt(ev), z = pieceAt(px, py);
+          if (z) pzHover = [z.id];
+        }
       }
-      if (h && tool === 'mv' && !st.f[h.i][h.j]) h = null;
     }
     const spanKey = x => x ? keyE(x) + (x.span ? '|' + keyE(x.span) + ':' + x.span.n : '') : '';
-    const changed = spanKey(hover) !== spanKey(h);
+    const key = spanKey(h) + '#' + (pzGhost ? [pzGhost.x, pzGhost.y, pzGhost.o, pzGhost.k].join(',') : '') + '#' + (pzHover ? pzHover.join(',') : '');
+    const changed = key !== lastHoverKey;
+    lastHoverKey = key;
     hover = h;
     if (changed || drag) render();
   });
@@ -1416,12 +1743,23 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   }
   const endDrag = () => {
     tip.style.display = 'none';
-    if (drag && drag.mode === 'mv'){ finishMove(); drag = null; render(); return; }
-    if (drag){ drag = null; save(); render(); }
+    if (!drag) return;
+    const d = drag;
+    drag = null;
+    if (d.mode === 'pz-move'){
+      if (d.moved && (d.dx || d.dy)){
+        snapshot();
+        for (const z of selPieces()){ z.x += d.dx; z.y += d.dy; }
+        save();
+      }
+    } else if (d.mode === 'pz-new'){
+      placePiece(d);
+    } else save();
+    render();
   };
   svg.addEventListener('pointerup', endDrag);
   svg.addEventListener('pointercancel', endDrag);
-  svg.addEventListener('pointerleave', () => { if (!drag){ hover = null; render(); } });
+  svg.addEventListener('pointerleave', () => { if (!drag){ hover = null; pzGhost = null; pzHover = null; lastHoverKey = ''; render(); } });
 
   // ---- Herramientas ----
   const TOOL_HELP = {
@@ -1429,9 +1767,9 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     '2': '<strong>Puerta:</strong> clic en un borde para colocar una puerta de 1 m, centrada en el vértice más cercano. Clic sobre una puerta existente para rotarla (bisagra y sentido de apertura); si es una puerta antigua de 50 cm, el primer clic la amplía a 1 m.',
     '3': '<strong>Ventana:</strong> clic en un borde para colocarla. Arrastra para hacer una ventana corrida.',
     '7': '<strong>Reja:</strong> se traza igual que una pared (clic o arrastrando en línea recta). Cierra el ambiente pero deja ver a través; en 3D se ve con barrotes negros de 1,8 m (1 m en el piso 2, como baranda).',
-    '0': '<strong>Borrar:</strong> cerca de un borde borra paredes, puertas y ventanas; en el centro de un cuadro borra el mueble.',
-    'mv': '<strong>Mover:</strong> arrastra un mueble para moverlo. Con el botón <strong>Grupo</strong> activo (o manteniendo Shift) mueves todo el conjunto de muebles que se tocan, como una mesa con sus sillas. Toca un mueble sin arrastrar para seleccionarlo y usa <strong>Girar</strong> (o R) para rotarlo 90°. Esc cancela.',
-    'f': '<strong>Mueble:</strong> clic en un cuadro para colocarlo; arrastra para repetirlo. <strong>R</strong> cambia la orientación. Clic sobre el mismo mueble lo quita.'
+    '0': '<strong>Borrar:</strong> cerca de un borde borra paredes, puertas y ventanas; sobre un mueble lo borra. Arrastra para borrar varios muebles.',
+    'mv': '<strong>Mover:</strong> arrastra un mueble para moverlo con ajuste fino (el paso se elige en el panel de abajo). Con el botón <strong>Grupo</strong> activo (o manteniendo Shift) mueves el conjunto de muebles que se tocan. Toca un mueble para seleccionarlo: en el panel cambias sus medidas, lo empujas con las flechas, lo giras (R) o lo centras en el ambiente. Esc cancela.',
+    'f': '<strong>Mueble:</strong> clic para colocarlo con su tamaño habitual, o arrastra para dibujar su tamaño. <strong>R</strong> cambia la orientación. Queda seleccionado: ajusta medidas y posición en el panel de abajo.'
   };
   function renderHelp(){
     const on = uiPref('help', true);
@@ -1447,7 +1785,9 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   }
   function renderToolUI(){
     svg.classList.toggle('moving', tool === 'mv');
-    if (tool !== 'mv' && mvSel){ mvSel = null; render(); }
+    pzGhost = null; pzHover = null;
+    if (tool !== 'mv' && tool !== 'f' && mvSel){ mvSel = null; render(); }
+    else updatePzPanel();
     $('grpBtn').hidden = tool !== 'mv';
     $('rotSelBtn').hidden = tool !== 'mv';
     $('grpBtn').setAttribute('aria-pressed', String(uiPref('grupo', false)));
@@ -1466,10 +1806,11 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     renderToolUI();
   }
   function selectMove(){
+    ensureFurnVisible();
     tool = 'mv';
     document.querySelectorAll('input[name=tool]').forEach(r => { r.checked = false; });
     document.querySelectorAll('#palette button').forEach(b => b.classList.remove('sel'));
-    renderToolUI();
+    renderToolUI(); render();
   }
   $('toolbar').addEventListener('click', e => {
     const b = e.target.closest('[data-tool]');
@@ -1482,14 +1823,17 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     renderToolUI(); render();
   });
   $('rotSelBtn').addEventListener('click', rotateSelection);
+  $('capaVer').addEventListener('click', () => { setUiPref('capaMuebles', !furnVisible()); mvSel = null; pzGhost = null; pzHover = null; renderLayerUI(); render(); });
+  $('capaLock').addEventListener('click', () => { setUiPref('bloqMuebles', !furnLocked()); pzGhost = null; pzHover = null; renderLayerUI(); render(); });
   document.querySelectorAll('input[name=tool]').forEach(r =>
     r.addEventListener('change', () => selectEdgeTool(+r.value)));
 
   function selectFurn(k){
+    ensureFurnVisible();
     tool = 'f'; furnSel = k;
     document.querySelectorAll('input[name=tool]').forEach(r => { r.checked = false; });
     document.querySelectorAll('#palette button').forEach(b => b.classList.toggle('sel', b.dataset.k === k));
-    renderToolUI();
+    renderToolUI(); render();
   }
   $('palette').innerHTML = FURN.map(f =>
     `<button type="button" data-k="${f.k}" title="${f.n}"><svg viewBox="0 0 100 100" aria-hidden="true"><g class="fu">${f.d}</g></svg>${f.n}</button>`
@@ -1516,13 +1860,16 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     syncPiso();
     st.rows = r; st.cols = c;
     st.pisos = st.pisos.map(p => {
-      const g = makeGrid(r, c, p.h, p.v, p.f);
+      const g = makeGrid(r, c, p.h, p.v, null);
       const names = {};
       for (const [k, n] of Object.entries(p.names || {})){
         const [i, j] = k.split('_').map(Number);
         if (i < r && j < c) names[k] = n;
       }
-      return { h:g.h, v:g.v, f:g.f, names };
+      // Las piezas cuyo centro queda fuera del nuevo tamaño se quitan
+      const cs = st.meters * 100, W = c * cs, H = r * cs;
+      const pz = (p.pz || []).filter(z => { const q = pzRect(z), mx = (q.x0 + q.x1) / 2, my = (q.y0 + q.y1) / 2; return mx >= 0 && my >= 0 && mx <= W && my <= H; });
+      return { h:g.h, v:g.v, f:g.f, names, pz };
     });
     loadPisoRefs(st.piso);
     hover = null;
@@ -1531,9 +1878,21 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   ['rows', 'cols'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') $('apply').click(); }));
 
   $('zoom').addEventListener('input', e => { st.cell = +e.target.value; render(); save(); });
+  // Al cambiar la escala, las piezas siguen al plano (se calculan siempre desde las medidas que había al enfocar el campo)
+  let metersBase = null;
+  $('meters').addEventListener('focus', () => { syncPiso(); metersBase = { m:st.meters, pz:st.pisos.map(p => (p.pz || []).map(z => Object.assign({}, z))) }; });
+  $('meters').addEventListener('blur', () => { metersBase = null; });
   $('meters').addEventListener('input', e => {
     const m = parseFloat(e.target.value);
-    if (m > 0){ st.meters = m; render(); save(); }
+    if (!(m > 0)) return;
+    if (metersBase){
+      const k = m / metersBase.m;
+      st.pisos.forEach((p, n) => (p.pz || []).forEach((z, idx) => {
+        const b = metersBase.pz[n] && metersBase.pz[n][idx];
+        if (b){ z.x = Math.round(b.x * k); z.y = Math.round(b.y * k); z.w = clampN(Math.round(b.w * k), 5, 3000); z.d = clampN(Math.round(b.d * k), 5, 3000); }
+      }));
+    }
+    st.meters = m; render(); save();
   });
   $('dims').addEventListener('change', e => { st.showDims = e.target.checked; render(); save(); });
   $('rooms').addEventListener('change', e => { st.showRooms = e.target.checked; render(); save(); });
@@ -1568,7 +1927,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     b.classList.remove('armed'); b.textContent = 'Vaciar este piso';
     snapshot();
     const n = makeGrid(st.rows, st.cols);
-    st.h = n.h; st.v = n.v; st.f = n.f; st.names = {};
+    st.h = n.h; st.v = n.v; st.f = n.f; st.names = {}; st.pz = []; mvSel = null;
     render(); save();
   });
 
@@ -1585,16 +1944,16 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     if (d === st) syncPiso();
     const flat = a => a.map(r => r.join('')).join('');
     const parts = p => {
-      const fu = [];
-      (p.f || []).forEach((r, i) => (r || []).forEach((x, j) => { if (x) fu.push(`${i}.${j}.${x.k}.${x.o || 0}`); }));
+      const src = Array.isArray(p.pz) ? p.pz : cellsToPieces(p.f, d.rows, d.cols, Math.round((d.meters || 1) * 100));
+      const fu = src.map(cleanPiece).filter(Boolean).map(z => `${z.k}.${z.x}.${z.y}.${z.w}.${z.d}.${z.o}`);
       const nm = Object.entries(p.names || {}).map(([k, n]) => k.replace('_', '.') + '.' + encodeURIComponent(n));
       return [flat(p.h), flat(p.v), fu.join(','), nm.join(',')];
     };
     const pisos = Array.isArray(d.pisos) && d.pisos[0] ? d.pisos : [{ h:d.h, v:d.v, f:d.f, names:d.names }];
     const head = [d.rows, d.cols, d.meters || 1];
     const mat = d.mat3d && Object.keys(d.mat3d).length ? ['M=' + b64enc(JSON.stringify(d.mat3d))] : [];
-    if (floorHasContent(pisos[1])) return ['PLANO4', ...head, ...parts(pisos[0]), ...parts(pisos[1]), ...mat].join(';');
-    return ['PLANO3', ...head, ...parts(pisos[0]), ...mat].join(';');
+    if (floorHasContent(pisos[1])) return ['PLANO6', ...head, ...parts(pisos[0]), ...parts(pisos[1]), ...mat].join(';');
+    return ['PLANO5', ...head, ...parts(pisos[0]), ...mat].join(';');
   }
 
   // Los materiales de un código son datos externos: se reconstruyen aceptando solo valores válidos
@@ -1627,13 +1986,23 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       for (const [name, v] of Object.entries(bo.rooms)) if (okName(name) && typeof v === 'boolean') out.boiserie.rooms[name] = v;
     return out;
   }
-  function parseFloor(r, c, hs, vs, fs, ns, label){
+  function parseFloor(r, c, hs, vs, fs, ns, label, usePieces, cs){
     if (!/^[0-7]*$/.test(hs + vs)) throw new Error(`El código contiene caracteres no válidos${label}.`);
     if (hs.length !== (r + 1) * c || vs.length !== r * (c + 1)) throw new Error(`El código está incompleto o fue modificado${label}.`);
     const g = makeGrid(r, c);
     for (let i = 0; i <= r; i++) g.h[i] = Array.from(hs.substr(i * c, c), Number);
     for (let i = 0; i < r; i++) g.v[i] = Array.from(vs.substr(i * (c + 1), c + 1), Number);
-    if (fs){
+    let pz = [];
+    if (fs && usePieces){
+      const list = fs.split(',');
+      if (list.length > 3000) throw new Error(`El código tiene demasiados muebles${label}.`);
+      for (const ent of list){
+        const q = ent.split('.');
+        const z = (q.length === 6 && q.slice(1).every(v => /^-?\d+$/.test(v))) ? cleanPiece({ k:q[0], x:q[1], y:q[2], w:q[3], d:q[4], o:q[5] }) : null;
+        if (!z) throw new Error(`La lista de muebles del código no es válida${label}.`);
+        pz.push(z);
+      }
+    } else if (fs){
       for (const ent of fs.split(',')){
         const q = ent.split('.');
         const i = parseInt(q[0], 10), j = parseInt(q[1], 10), o = parseInt(q[3], 10);
@@ -1641,6 +2010,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
           throw new Error(`La lista de muebles del código no es válida${label}.`);
         g.f[i][j] = { k:q[2], o };
       }
+      pz = cellsToPieces(g.f, r, c, cs);   // formato anterior: se convierte a piezas
     }
     const names = {};
     if (ns){
@@ -1654,25 +2024,26 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
         names[i + '_' + j] = n;
       }
     }
-    return { h:g.h, v:g.v, f:g.f, names };
+    return { h:g.h, v:g.v, f:makeGrid(r, c).f, names, pz };
   }
   function decode(text){
     const p = text.replace(/\s+/g, '').split(';');
     // Sección opcional de materiales al final (PLANO3 y PLANO4)
     let mat3dIn = null;
-    if ((p[0] === 'PLANO3' || p[0] === 'PLANO4') && p.length && /^M=/.test(p[p.length - 1])){
+    if (/^PLANO[3-6]$/.test(p[0]) && p.length && /^M=/.test(p[p.length - 1])){
       try { mat3dIn = JSON.parse(b64dec(p.pop().slice(2))); }
       catch(_){ throw new Error('La sección de materiales del código no es válida.'); }
       if (!mat3dIn || typeof mat3dIn !== 'object') throw new Error('La sección de materiales del código no es válida.');
     }
-    const ver = { PLANO1:6, PLANO2:7, PLANO3:8, PLANO4:12 }[p[0]];
+    const ver = { PLANO1:6, PLANO2:7, PLANO3:8, PLANO4:12, PLANO5:8, PLANO6:12 }[p[0]];
     if (!ver || p.length !== ver) throw new Error('El texto no tiene el formato de un código de plano.');
     const r = parseInt(p[1], 10), c = parseInt(p[2], 10), m = parseFloat(p[3]);
     if (!(r >= 1 && r <= 80 && c >= 1 && c <= 80)) throw new Error('El tamaño de la grilla no es válido.');
     if (!(m > 0)) throw new Error('La escala en metros no es válida.');
-    const multi = ver === 12;
-    const p1 = parseFloor(r, c, p[4], p[5], ver >= 7 ? p[6] : '', ver >= 8 ? p[7] : '', multi ? ' (piso 1)' : '');
-    const p2 = multi ? parseFloor(r, c, p[8], p[9], p[10], p[11], ' (piso 2)') : blankFloor(r, c);
+    const multi = ver === 12;   // PLANO4 y PLANO6 llevan dos pisos
+    const usePieces = p[0] === 'PLANO5' || p[0] === 'PLANO6', cs = Math.round(m * 100);
+    const p1 = parseFloor(r, c, p[4], p[5], ver >= 7 ? p[6] : '', ver >= 8 ? p[7] : '', multi ? ' (piso 1)' : '', usePieces, cs);
+    const p2 = multi ? parseFloor(r, c, p[8], p[9], p[10], p[11], ' (piso 2)', usePieces, cs) : blankFloor(r, c);
     const out = { rows:r, cols:c, meters:m, h:p1.h, v:p1.v, f:p1.f, names:p1.names, pisos:[p1, p2], piso:0 };
     if (mat3dIn) out.mat3d = sanitizeMat3d(mat3dIn);
     return out;
@@ -2233,46 +2604,30 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     }
   }
   // Tipos que se modelan como una sola pieza cuando ocupan un bloque rectangular de cuadros iguales
-  const BLOCK_TYPES = new Set(['a', 'c', 'k', 'l', 'i', 'j', 'o']);
-
+  // Pieza cuyo rectángulo contiene el centro del cuadro (i, j); si ninguna, la que tiene su centro dentro de ese cuadro
+  function pieceForCell(p, i, j){
+    const cs = st.meters * 100, cx = (j + .5) * cs, cy = (i + .5) * cs, pz = p.pz || [];
+    for (let k = pz.length - 1; k >= 0; k--){ const r = pzRect(pz[k]); if (cx >= r.x0 && cx <= r.x1 && cy >= r.y0 && cy <= r.y1) return pz[k]; }
+    for (let k = pz.length - 1; k >= 0; k--){
+      const r = pzRect(pz[k]), mx = (r.x0 + r.x1) / 2, my = (r.y0 + r.y1) / 2;
+      if (mx >= j * cs && mx < (j + 1) * cs && my >= i * cs && my < (i + 1) * cs) return pz[k];
+    }
+    return null;
+  }
   function buildFurniture(p, base, info){
-    const R = st.rows, C = st.cols, m = st.meters;
-    const seen = Array.from({ length:R }, () => new Array(C).fill(false));
-    for (let i = 0; i < R; i++) for (let j = 0; j < C; j++){
-      const it = p.f[i] && p.f[i][j];
-      if (!it || seen[i][j]) continue;
-      const k = it.k, o = it.o || 0;
-      let cells = [[i, j]];
-      if (BLOCK_TYPES.has(k)){
-        const st2 = [[i, j]]; seen[i][j] = true; cells = [];
-        while (st2.length){
-          const [a, b] = st2.pop(); cells.push([a, b]);
-          for (const [na, nb] of [[a - 1, b], [a + 1, b], [a, b - 1], [a, b + 1]]){
-            if (na < 0 || nb < 0 || na >= R || nb >= C || seen[na][nb]) continue;
-            const x = p.f[na][nb];
-            if (x && x.k === k && (x.o || 0) === o){ seen[na][nb] = true; st2.push([na, nb]); }
-          }
-        }
-        let i0 = R, i1 = -1, j0 = C, j1 = -1;
-        for (const [a, b] of cells){ i0 = Math.min(i0, a); i1 = Math.max(i1, a); j0 = Math.min(j0, b); j1 = Math.max(j1, b); }
-        if (cells.length !== (i1 - i0 + 1) * (j1 - j0 + 1)){
-          for (const [a, b] of cells) placeModel(k, o, a, a, b, b, base, info);
-          continue;
-        }
-        placeModel(k, o, i0, i1, j0, j1, base, info);
+    const R = st.rows, C = st.cols, cs = st.meters * 100;
+    for (const z of (p.pz || [])){
+      const b = pzBox(z), o = z.o || 0;
+      const cx = (z.x + b.w / 2) / 100, cz = (z.y + b.d / 2) / 100;
+      if (z.k === 'p'){
+        const i = clampN(Math.floor((z.y + b.d / 2) / cs), 0, R - 1), j = clampN(Math.floor((z.x + b.w / 2) / cs), 0, C - 1);
+        setFrame(cx, base, cz, 0);
+        plant(info && info.regions[info.id[i][j]].ext);
         continue;
       }
-      seen[i][j] = true;
-      placeModel(k, o, i, i, j, j, base, info);
+      setFrame(cx, base, cz, -o * Math.PI / 2);
+      if (MODEL[z.k]) MODEL[z.k](z.w / 100, z.d / 100);
     }
-  }
-  function placeModel(k, o, i0, i1, j0, j1, base, info){
-    const m = st.meters;
-    const x0 = j0 * m, x1 = (j1 + 1) * m, z0 = i0 * m, z1 = (i1 + 1) * m;
-    setFrame((x0 + x1) / 2, base, (z0 + z1) / 2, -o * Math.PI / 2);
-    const W = o % 2 ? z1 - z0 : x1 - x0, D = o % 2 ? x1 - x0 : z1 - z0;
-    if (k === 'p'){ setFrame((x0 + x1) / 2, base, (z0 + z1) / 2, 0); plant(info && info.regions[info.id[i0][j0]].ext); return; }
-    if (MODEL[k]) MODEL[k](W, D);
   }
 
   // ---- Puertas: marco y hoja de madera entreabierta ----
@@ -2838,7 +3193,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     const cx = best.cells.reduce((a, c) => a + c[1], 0) / best.cells.length;
     let pick = null, bd = Infinity;
     for (const [i, j] of best.cells){
-      if (p.f[i] && p.f[i][j]) continue;
+      if (pieceForCell(p, i, j)) continue;
       const d = (i - cy) ** 2 + (j - cx) ** 2;
       if (d < bd){ bd = d; pick = [i, j]; }
     }
@@ -3031,7 +3386,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       const cy = sy / r.cells.length, cx = sx / r.cells.length;
       let pick = null, bd = Infinity;
       for (const [i, j] of r.cells){
-        if (p.f[i] && p.f[i][j]) continue;
+        if (pieceForCell(p, i, j)) continue;
         const d = (i - cy) ** 2 + (j - cx) ** 2;
         if (d < bd){ bd = d; pick = [i, j]; }
       }
@@ -3058,7 +3413,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       for (let j = 0; j <= C; j++){
         cl += vC(p.v[i][j]);
         if (j === C) break;
-        const it = p.f[i] && p.f[i][j];
+        const it = pieceForCell(p, i, j);
         let cell = '  ';
         if (it && ASCII_FURN[it.k]){ cell = ASCII_FURN[it.k][0]; used.add(it.k); }
         else if (label[i + '_' + j]) cell = label[i + '_' + j];
@@ -3209,16 +3564,20 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     docUrl:'https://docs.google.com/document/d/1VKE8RqgDbTa9nCCWLbQjSJX0Lxr4jeDLyg5lcA4Jh6s/edit?tab=t.0',
     scriptUrl:'',   // opcional: enlace del script de lectura (/exec), si el navegador bloquea la lectura directa
     slot:0,
-    v:2
+    v:3
   };
   const sync = Object.assign({ docUrl:'', scriptUrl:'', token:'', slot:1, autoLoad:true, autoPush:false, showAdv:false,
                                lastRemote:'', lastLocal:'', lastAt:0, preferRemote:false },
                              (() => { try { return JSON.parse(localStorage.getItem(SYNC_KEY) || '{}'); } catch(_){ return {}; } })());
   let syncBusy = false, syncApplying = false, syncTimer = null, syncLastCheck = 0;
   const saveSync = () => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch(_){} };
-  if (sync.v !== 2 && (sync.docUrl || sync.scriptUrl)){
+  if (!(sync.v >= 2) && (sync.docUrl || sync.scriptUrl)){
     // Migración: antes el documento se vinculaba al espacio 1; ahora siempre vive en el espacio 0
     sync.v = 2; sync.slot = 0; sync.lastRemote = ''; sync.lastLocal = ''; sync.preferRemote = false; saveSync();
+  }
+  if (sync.v < 3){
+    // Versión 3: los códigos pasan a llevar piezas libres; se comparan por contenido, así que se reinicia el estado de comparación
+    sync.v = 3; sync.lastRemote = ''; sync.lastLocal = ''; saveSync();
   }
   if (!sync.docUrl && !sync.scriptUrl){
     // Equipo sin configuración: se vincula el documento fijo y, en la primera lectura, el documento manda
@@ -3228,7 +3587,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   }
   const docIdOf = u => { const s = String(u || '').trim(); const m = s.match(/\/d\/([\w-]{20,})/); return m ? m[1] : (/^[\w-]{20,}$/.test(s) ? s : ''); };
   const hashOf = str => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return String(h >>> 0); };
-  const extractCode = text => { const m = String(text || '').replace(/^\uFEFF/, '').match(/PLANO[1-4];\S+/); return m ? m[0] : ''; };
+  const extractCode = text => { const m = String(text || '').replace(/^\uFEFF/, '').match(/PLANO[1-6];\S+/); return m ? m[0] : ''; };
   const genToken = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), b => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
   const fail = msg => Object.assign(new Error(msg), { syncMsg:msg });
   const syncErr = e => (e && e.syncMsg) || 'Google no permitió leer el documento directamente desde el navegador (o no hay conexión a internet). Si estás conectado, usa el script de lectura: sus instrucciones aparecen abajo y su enlace va en «Enlace del script».';
@@ -3286,8 +3645,16 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   }
 
   const hora = () => new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
+  // Un mismo plano puede estar escrito en el formato anterior o en el nuevo: se compara siempre el contenido
+  const canonCode = code => { try { return encode(decode(code)); } catch(_){ return code; } };
+  const stripM = c => c.replace(/;M=[^;]*$/, '');
+  // ¿Es el mismo plano? Los materiales solo cuentan si el documento los trae
+  function sameCode(remote, local){
+    const rc = canonCode(remote);
+    return /;M=/.test(rc) ? rc === local : stripM(rc) === stripM(local);
+  }
   function markSynced(code){
-    sync.lastRemote = hashOf(code); sync.lastLocal = hashOf(localCode()); sync.lastAt = Date.now(); saveSync();
+    sync.lastRemote = hashOf(canonCode(code)); sync.lastLocal = hashOf(localCode()); sync.lastAt = Date.now(); saveSync();
   }
   // Aplica el código del documento al espacio vinculado (con respaldo del contenido anterior)
   function applyRemote(code){
@@ -3328,12 +3695,12 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       const remote = await fetchRemote();
       syncLastCheck = Date.now();
       if (!remote){ setStatus('El documento todavía no contiene un código de plano.', auto ? '' : 'err'); return; }
-      const rh = hashOf(remote), lh = hashOf(localCode());
+      const rh = hashOf(canonCode(remote)), lh = hashOf(localCode());
       const first = !sync.lastRemote && !sync.lastLocal;
       const remoteChanged = rh !== sync.lastRemote, localChanged = lh !== sync.lastLocal;
       if (first){
         if (slotIsEmpty() || sync.preferRemote){ applyRemote(remote); toast('Plano cargado desde Google Docs.'); }
-        else if (!remoteChanged || remote === localCode()){ markSynced(remote); setStatus('Sincronizado.', 'ok'); }
+        else if (!remoteChanged || sameCode(remote, localCode())){ markSynced(remote); setStatus('Sincronizado.', 'ok'); }
         else showConflict(remote);
       } else if (!remoteChanged && !localChanged){
         setStatus('Sincronizado (revisado a las ' + hora() + ').', 'ok');
@@ -3359,7 +3726,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       setStatus('Guardando en el documento…');
       if (!force){
         const remote = await fetchRemote();
-        if (remote && hashOf(remote) !== sync.lastRemote && remote !== code){ showConflict(remote); setStatus('El documento cambió desde la última sincronización.', 'err'); return; }
+        if (remote && hashOf(canonCode(remote)) !== sync.lastRemote && !sameCode(remote, code)){ showConflict(remote); setStatus('El documento cambió desde la última sincronización.', 'err'); return; }
       }
       await pushRemote(code);
       markSynced(code);
@@ -3384,7 +3751,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       syncLastCheck = Date.now();
       if (!remote){ setStatus('El documento todavía no contiene un código de plano.', 'err'); toast('El documento todavía no contiene un código de plano.'); return; }
       const local = localCode();
-      if (remote === local){ markSynced(remote); setStatus('Sincronizado con el documento (' + hora() + ').', 'ok'); toast('Espacio 0: ya está actualizado.'); return; }
+      if (sameCode(remote, local)){ markSynced(remote); setStatus('Sincronizado con el documento (' + hora() + ').', 'ok'); toast('Espacio 0: ya está actualizado.'); return; }
       const edited = hashOf(local) !== sync.lastLocal && !slotIsEmpty();
       if (edited && !confirm('El espacio 0 tiene cambios que no están en el documento. ¿Descartarlos y cargar la versión del documento? Se guarda una copia que podrás recuperar.')){
         setStatus('Se mantienen los cambios locales del espacio 0.'); return;
@@ -3403,7 +3770,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       if (!remote){ setStatus('El documento todavía no contiene un código de plano.', 'err'); return; }
       const lh = hashOf(localCode());
       const firstTime = !sync.lastLocal;
-      if (lh !== sync.lastLocal && remote !== localCode() && !slotIsEmpty() &&
+      if (lh !== sync.lastLocal && !sameCode(remote, localCode()) && !slotIsEmpty() &&
           !confirm((firstTime ? `Se reemplazará el plano actual del espacio ${sync.slot} por el del documento.` : `Hay cambios en el espacio ${sync.slot} que no se subieron y se reemplazarán por los del documento.`) +
                    (sync.slot === slot ? ' Podrás volver con Deshacer.' : ' Se guarda una copia de respaldo en este navegador.') + ' ¿Continuar?')){ setStatus(''); return; }
       applyRemote(remote); toast('Plano cargado desde Google Docs.');
@@ -3513,7 +3880,16 @@ function doPost(e) {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){ e.preventDefault(); undo(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'r' || e.key === 'R'){ if (tool === 'mv') rotateSelection(); else rotate(); return; }
-    if (e.key === 'Escape' && drag && drag.mode === 'mv'){ drag = null; tip.style.display = 'none'; render(); return; }
+    if (e.key === 'Escape' && drag && String(drag.mode).startsWith('pz-')){ drag = null; tip.style.display = 'none'; render(); return; }
+    if (mvSel && (tool === 'mv' || tool === 'f')){
+      const s = e.shiftKey ? stepCm() * 5 : stepCm();    // con Shift, cinco pasos
+      if (e.key === 'ArrowLeft'){ e.preventDefault(); nudge(-s, 0); return; }
+      if (e.key === 'ArrowRight'){ e.preventDefault(); nudge(s, 0); return; }
+      if (e.key === 'ArrowUp'){ e.preventDefault(); nudge(0, -s); return; }
+      if (e.key === 'ArrowDown'){ e.preventDefault(); nudge(0, s); return; }
+      if (e.key === 'Delete' || e.key === 'Backspace'){ e.preventDefault(); deleteSel(); return; }
+      if (e.key === 'Escape'){ mvSel = null; render(); return; }
+    }
     if (e.key === '5'){ selectMove(); return; }
     if (e.key === '6'){ selectEdgeTool(7); return; }
     const map = { '1':'t1', '2':'t2', '3':'t3', '4':'t0' };
@@ -3533,6 +3909,18 @@ function doPost(e) {
   renderFloorUI();
   renderToolUI();
   initSync();
+  renderLayerUI(); bindPzPanel(); updatePzPanel();
+  // Si la página se abrió a través de la pantalla de contraseña, se ofrece olvidarla en este equipo
+  if (window.__planoGate){
+    const lb = $('lockBtn'); lb.hidden = false;
+    lb.addEventListener('click', () => {
+      if (!confirm('Se olvidará la contraseña guardada en este equipo y la página volverá a pedirla. ¿Continuar?')) return;
+      let done = false;
+      const go = () => { if (!done){ done = true; location.reload(); } };
+      try { const r = indexedDB.deleteDatabase('plano-gate'); r.onsuccess = go; r.onerror = go; r.onblocked = go; } catch(_){ go(); }
+      setTimeout(go, 800);
+    });
+  }
 })();
 </script>
 </body>
