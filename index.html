@@ -465,7 +465,11 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     { k:'w', n:'Mesada anafe', d:'<rect class="b nb" x="0" y="0" width="100" height="100"/><rect class="bk" x="0" y="0" width="100" height="18"/><path d="M0 18 H100 M0 97 H100"/><rect x="14" y="24" width="72" height="66" rx="4" stroke-opacity=".5"/><circle cx="32" cy="41" r="10"/><circle cx="68" cy="41" r="10"/><circle cx="32" cy="73" r="10"/><circle cx="68" cy="73" r="10"/>' },
     { k:'x', n:'Mesada bacha', d:'<rect class="b nb" x="0" y="0" width="100" height="100"/><rect class="bk" x="0" y="0" width="100" height="18"/><path d="M0 18 H100 M0 97 H100"/><rect x="18" y="32" width="64" height="54" rx="12"/><circle cx="50" cy="25" r="4"/>' },
     { k:'z', n:'Silla', d:'<rect class="b" x="26" y="4" width="48" height="34" rx="5"/><rect class="b" x="24" y="40" width="52" height="8" rx="3"/>' },
-    { k:'p', n:'Planta', d:'<circle class="b" cx="50" cy="50" r="30"/><path d="M50 20 V80 M20 50 H80 M29 29 L71 71 M71 29 L29 71"/><circle class="b" cx="50" cy="50" r="8"/>' }
+    { k:'p', n:'Planta', d:'<circle class="b" cx="50" cy="50" r="30"/><path d="M50 20 V80 M20 50 H80 M29 29 L71 71 M71 29 L29 71"/><circle class="b" cx="50" cy="50" r="8"/>' },
+    { k:'A', n:'Pérgola', d:'<rect x="10" y="10" width="80" height="80"/><path d="M10 30 H90 M10 50 H90 M10 70 H90 M30 10 V90 M50 10 V90 M70 10 V90" stroke-opacity=".55"/><rect class="b" x="6" y="6" width="14" height="14"/><rect class="b" x="80" y="6" width="14" height="14"/><rect class="b" x="6" y="80" width="14" height="14"/><rect class="b" x="80" y="80" width="14" height="14"/>' },
+    { k:'B', n:'Parrilla', d:'<rect class="b" x="6" y="34" width="88" height="56" rx="2"/><rect x="34" y="44" width="32" height="38"/><path d="M40 48 V78 M47 48 V78 M54 48 V78 M60 48 V78" stroke-opacity=".7"/><path d="M34 34 V90 M66 34 V90" stroke-opacity=".5"/><rect class="b" x="38" y="8" width="24" height="20" rx="1"/>' },
+    { k:'C', n:'Baldosa', d:'<rect class="b" x="14" y="14" width="72" height="72" rx="4"/><path d="M26 32 H52 M26 42 H40 M62 70 H76" stroke-opacity=".4"/>' },
+    { k:'D', n:'Maceta', d:'<rect class="b" x="6" y="24" width="88" height="52" rx="5"/><rect x="13" y="31" width="74" height="38" rx="3" stroke-opacity=".5"/><circle class="b" cx="30" cy="50" r="14"/><circle class="b" cx="52" cy="46" r="15"/><circle class="b" cx="72" cy="52" r="13"/>' }
   ];
   const FMAP = Object.fromEntries(FURN.map(f => [f.k, f]));
 
@@ -475,7 +479,8 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   // o = giro en pasos de 90°.
   const FURN_DEF = { a:[140,190], b:[180,90], c:[160,90], d:[60,60], e:[70,70], f:[60,60], g:[60,50], h:[40,70], i:[90,90],
                      j:[70,170], k:[150,60], l:[140,70], m:[60,60], n:[120,30], o:[90,270], p:[40,40], q:[100,50], r:[250,14],
-                     s:[90,90], t:[90,90], u:[60,60], v:[60,60], w:[60,60], x:[60,60], y:[80,25], z:[45,45] };
+                     s:[90,90], t:[90,90], u:[60,60], v:[60,60], w:[60,60], x:[60,60], y:[80,25], z:[45,45],
+                     A:[300,300], B:[180,70], C:[50,50], D:[100,50] };
   const BLOCK_TYPES = new Set(['a', 'c', 'k', 'l', 'i', 'j', 'o']);   // al convertir planos antiguos, un bloque rectangular de estos se une en una sola pieza
   let pzCounter = 0;
   const clampN = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -1093,7 +1098,32 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     },
     q: (w, d) => C_(w, d, Math.min(12, d / 3), 'b') + L_(-w * 0.3, 0, w * 0.3, 0, ' stroke-opacity=".4"'),
     n: (w, d) => C_(w, d, 2, 'b') + L_(-w / 2 + 8, 0, w / 2 - 8, 0, ' stroke-opacity=".5"'),
-    r: (w, d) => C_(w, d, 0, 'b') + L_(-w / 2, d / 2 + 12, w / 2, d / 2 + 12, ' stroke-dasharray="6 8" stroke-opacity=".5"')
+    r: (w, d) => C_(w, d, 0, 'b') + L_(-w / 2, d / 2 + 12, w / 2, d / 2 + 12, ' stroke-dasharray="6 8" stroke-opacity=".5"'),
+    A: (w, d) => {   // pérgola: solo líneas (sin relleno) para que se vean los muebles que quedan debajo
+      const ns = Math.max(3, Math.round(w / 40)), nb = Math.max(2, Math.round(d / 90) + 1);
+      let s = C_(w, d, 0, '');
+      for (let k = 1; k < ns; k++){ const x = -w / 2 + k * w / ns; s += L_(x, -d / 2, x, d / 2, ' stroke-opacity=".45"'); }
+      for (let k = 0; k < nb; k++){ const y = -d / 2 + 6 + k * (d - 12) / (nb - 1); s += L_(-w / 2, y, w / 2, y); }
+      for (const [x, y] of [[-w / 2, -d / 2], [w / 2 - 12, -d / 2], [-w / 2, d / 2 - 12], [w / 2 - 12, d / 2 - 12]]) s += R_(x, y, 12, 12, 0, 'b');
+      return s;
+    },
+    B: (w, d) => {   // parrilla argentina: cuerpo, fogón con parrilla, leñero y chimenea
+      const a = w / 6, ch = Math.min(30, d * 0.45);
+      let s = C_(w, d, 3, 'b') + R_(-a, -d / 2 + 8, 2 * a, d - 16, 2, '') + L_(-a, -d / 2, -a, d / 2, ' stroke-opacity=".5"') + L_(a, -d / 2, a, d / 2, ' stroke-opacity=".5"');
+      const nb = Math.max(4, Math.round(2 * a / 10));
+      for (let k = 1; k < nb; k++){ const x = -a + k * 2 * a / nb; s += L_(x, -d / 2 + 12, x, d / 2 - 12, ' stroke-opacity=".7"'); }
+      return s + R_(-18, -d / 2 + 4, 36, ch, 1, 'b') + R_(a + 8, d / 2 - 14, w / 2 - a - 16, 8, 1, '');
+    },
+    C: (w, d) => C_(w, d, Math.min(4, d / 8), 'b') + L_(-w * 0.3, -d * 0.18, w * 0.1, -d * 0.18, ' stroke-opacity=".4"') + L_(-w * 0.3, -d * 0.05, -w * 0.1, -d * 0.05, ' stroke-opacity=".4"'),
+    D: (w, d) => {   // maceta o cantero con plantas
+      const n = Math.max(1, Math.round(Math.max(w, d) / 40)), r = Math.max(6, Math.min(w, d) / 2 - 9), ln = Math.max(w, d);
+      let s = C_(w, d, 5, 'b') + R_(-w / 2 + 6, -d / 2 + 6, w - 12, d - 12, 3, '').replace('/>', ' stroke-opacity=".5"/>');
+      for (let k = 0; k < n; k++){
+        const f = n === 1 ? 0 : (k / (n - 1) - 0.5) * (ln - 2 * r - 12);
+        s += `<circle class="b" cx="${+(w >= d ? f : 0).toFixed(1)}" cy="${+(w >= d ? 0 : f).toFixed(1)}" r="${+r.toFixed(1)}"/>`;
+      }
+      return s;
+    }
   };
   // Dibuja una pieza; dx, dy desplazan la pieza (arrastre en curso)
   function pieceSVG(z, cls, dx, dy){
@@ -2614,6 +2644,43 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     o(W, D){ // escalera: sube hacia el fondo (-z)
       const t = MT, n = Math.max(2, Math.round(D / .27)), rise = H3.floor / n, run = D / n;
       for (let k = 0; k < n; k++) pbox(-W / 2, 0, D / 2 - (k + 1) * run, W / 2, (k + 1) * rise, D / 2 - k * run, t.wood);
+    },
+    A(W, D){ // pérgola: cuatro patas de madera y techo de vigas y tirantillos, con huecos
+      const t = MT, h = 2.4, post = 0.12, ix = W / 2 - post / 2, iz = D / 2 - post / 2, ov = 0.2;
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) pbox(sx * ix - post / 2, 0, sz * iz - post / 2, sx * ix + post / 2, h, sz * iz + post / 2, t.wood);
+      const nb = Math.max(2, Math.round(D / 0.9) + 1);
+      for (let k = 0; k < nb; k++){ const z = -iz + k * (2 * iz) / (nb - 1); pbox(-W / 2 - ov, h - 0.02, z - 0.045, W / 2 + ov, h + 0.14, z + 0.045, t.wood); }
+      const ns = Math.max(3, Math.floor((W + 2 * ov) / 0.24));
+      for (let k = 0; k < ns; k++){ const x = -W / 2 - ov + (k + 0.5) * (W + 2 * ov) / ns; pbox(x - 0.02, h + 0.14, -D / 2 - ov, x + 0.02, h + 0.21, D / 2 + ov, t.wood); }
+    },
+    B(W, D){ // parrilla argentina: cuerpo de piedra, fogón con parrilla, leñero, campana y chimenea
+      const t = MT, stone = matC('#8a7f72', { roughness:.95 }), stone2 = matC('#6f665b', { roughness:.95 }), slab = matC('#d9d5ce', { roughness:.6 });
+      const a = W / 6, hd = Math.min(0.5, D * 0.8);
+      pbox(-W / 2, 0, -D / 2, W / 2, 0.8, D / 2, stone);
+      pbox(-W / 2 - 0.02, 0.8, -D / 2 - 0.02, -a, 0.84, D / 2 + 0.02, slab);                         // mesada
+      pbox(a + 0.05, 0.08, D / 2 - 0.01, W / 2 - 0.05, 0.6, D / 2 + 0.01, t.black);                    // leñero
+      pbox(-a, 0.8, -D / 2, a, 0.98, -D / 2 + 0.08, stone2);                                           // paredes del fogón
+      pbox(-a, 0.8, -D / 2, -a + 0.08, 0.98, D / 2, stone2);
+      pbox(a - 0.08, 0.8, -D / 2, a, 0.98, D / 2, stone2);
+      pbox(-a + 0.08, 0.8, -D / 2 + 0.08, a - 0.08, 0.84, D / 2, t.black);
+      pbox(-a + 0.12, 0.84, -D / 2 + 0.12, a - 0.12, 0.87, D / 2 - 0.12, matC('#7a2e1c', { roughness:.9 }));   // brasas
+      const nbars = Math.max(5, Math.round((2 * a - 0.16) / 0.06));
+      for (let k = 0; k < nbars; k++){ const x = -a + 0.08 + (k + 0.5) * (2 * a - 0.16) / nbars; pbox(x - 0.008, 0.93, -D / 2 + 0.08, x + 0.008, 0.945, D / 2 - 0.02, t.steel); }   // parrilla
+      pbox(-a, 1.5, -D / 2, a, 1.85, -D / 2 + hd, stone);                                              // campana
+      pbox(-0.18, 1.85, -D / 2, 0.18, 2.8, -D / 2 + Math.min(0.36, hd), stone);                         // chimenea
+    },
+    C(W, D){ pbox(-W / 2, 0, -D / 2, W / 2, 0.04, D / 2, matC('#b9b5ad', { roughness:.95 })); },       // baldosa suelta
+    D(W, D){ // maceta o cantero con plantas
+      const t = MT, conc = matC('#e6e3dd', { roughness:.9 }), soil = matC('#4a3626', { roughness:1 }), th = 0.06, h = 0.55;
+      pbox(-W / 2, 0, -D / 2, W / 2, h, -D / 2 + th, conc); pbox(-W / 2, 0, D / 2 - th, W / 2, h, D / 2, conc);
+      pbox(-W / 2, 0, -D / 2 + th, -W / 2 + th, h, D / 2 - th, conc); pbox(W / 2 - th, 0, -D / 2 + th, W / 2, h, D / 2 - th, conc);
+      pbox(-W / 2 + th, 0.05, -D / 2 + th, W / 2 - th, h - 0.06, D / 2 - th, soil);
+      const ln = Math.max(W, D), n = Math.max(1, Math.round(ln / 0.45)), r = Math.max(0.1, Math.min(W, D) / 2 - th - 0.01);
+      for (let k = 0; k < n; k++){
+        const f = n === 1 ? 0 : (k / (n - 1) - 0.5) * (ln - 2 * r - 2 * th), x = W >= D ? f : 0, z = W >= D ? 0 : f;
+        psph(x, h + 0.02, z, r * 1.15, 0.3, r * 1.15, t.green);
+        psph(x + 0.04, h + 0.15, z - 0.03, r * 0.85, 0.22, r * 0.85, t.green2);
+      }
     }
   };
   function plant(exterior){
@@ -3406,7 +3473,8 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     l:['Es','escritorio'], m:['Lv','lavarropas'], n:['TV','televisor'], o:['Ec','escalera'], p:['Pt','planta'],
     q:['Mr','mesa ratona'], r:['Pa','pantalla de proyector'], s:['Si','sillón (módulo)'], t:['SE','sillón (esquina)'],
     u:['Md','mesada'], v:['ME','mesada (esquina)'], w:['An','mesada con anafe'], x:['MB','mesada con bacha'],
-    y:['Et','estufa de pared'], z:['Sl','silla']
+    y:['Et','estufa de pared'], z:['Sl','silla'],
+    A:['Pe','pérgola (4 patas y techo de madera calado)'], B:['Pr','parrilla argentina'], C:['Bz','baldosa suelta'], D:['Mc','maceta o cantero con plantas']
   };
   function floorToText(p, title){
     const R = st.rows, C = st.cols, m = st.meters;
