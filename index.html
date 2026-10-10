@@ -473,7 +473,12 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     { k:'A', n:'Pérgola', d:'<rect x="10" y="10" width="80" height="80"/><path d="M10 30 H90 M10 50 H90 M10 70 H90 M30 10 V90 M50 10 V90 M70 10 V90" stroke-opacity=".55"/><rect class="b" x="6" y="6" width="14" height="14"/><rect class="b" x="80" y="6" width="14" height="14"/><rect class="b" x="6" y="80" width="14" height="14"/><rect class="b" x="80" y="80" width="14" height="14"/>' },
     { k:'B', n:'Parrilla', d:'<rect class="b" x="6" y="34" width="88" height="56" rx="2"/><rect x="34" y="44" width="32" height="38"/><path d="M40 48 V78 M47 48 V78 M54 48 V78 M60 48 V78" stroke-opacity=".7"/><path d="M34 34 V90 M66 34 V90" stroke-opacity=".5"/><rect class="b" x="38" y="8" width="24" height="20" rx="1"/>' },
     { k:'C', n:'Baldosa', d:'<rect class="b" x="14" y="14" width="72" height="72" rx="4"/><path d="M26 32 H52 M26 42 H40 M62 70 H76" stroke-opacity=".4"/>' },
-    { k:'D', n:'Maceta', d:'<rect class="b" x="6" y="24" width="88" height="52" rx="5"/><rect x="13" y="31" width="74" height="38" rx="3" stroke-opacity=".5"/><circle class="b" cx="30" cy="50" r="14"/><circle class="b" cx="52" cy="46" r="15"/><circle class="b" cx="72" cy="52" r="13"/>' }
+    { k:'D', n:'Maceta', d:'<rect class="b" x="6" y="24" width="88" height="52" rx="5"/><rect x="13" y="31" width="74" height="38" rx="3" stroke-opacity=".5"/><circle class="b" cx="30" cy="50" r="14"/><circle class="b" cx="52" cy="46" r="15"/><circle class="b" cx="72" cy="52" r="13"/>' },
+    { k:'E', n:'Alacena', d:'<rect x="3" y="12" width="94" height="76" stroke-dasharray="7 5"/><path d="M50 12 V88" stroke-dasharray="7 5"/><path d="M3 12 L97 88 M97 12 L3 88" stroke-opacity=".25" stroke-dasharray="3 5"/>' },
+    { k:'F', n:'Mesada con alacena', d:'<rect class="b nb" x="0" y="0" width="100" height="100"/><rect class="bk" x="0" y="0" width="100" height="18"/><path d="M0 18 H100 M0 97 H100"/><rect x="3" y="3" width="94" height="52" stroke-dasharray="7 5" stroke-opacity=".8"/><path d="M50 3 V55" stroke-dasharray="7 5" stroke-opacity=".8"/>' },
+    { k:'G', n:'Bicicleta (colgada)', d:'<rect x="2" y="6" width="96" height="88" stroke-dasharray="7 5" stroke-opacity=".45"/><rect class="b" x="6" y="12" width="88" height="16" rx="8"/><path d="M14 48 H86"/><rect class="b" x="38" y="38" width="24" height="10" rx="3"/><rect class="b" x="40" y="62" width="20" height="26" rx="3"/>' },
+    { k:'H', n:'Extractor', d:'<rect x="4" y="4" width="92" height="92" rx="4"/><rect class="b" x="34" y="4" width="32" height="40"/><path d="M4 96 L34 44 M96 96 L66 44" stroke-opacity=".5"/><circle cx="50" cy="72" r="9" stroke-opacity=".5"/>' },
+    { k:'I', n:'Mampara de vidrio', d:'<rect class="b" x="2" y="30" width="96" height="40" rx="4" fill-opacity=".35"/><path d="M8 50 H92" stroke-opacity=".6"/>' }
   ];
   const FMAP = Object.fromEntries(FURN.map(f => [f.k, f]));
 
@@ -484,7 +489,8 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   const FURN_DEF = { a:[140,190], b:[180,90], c:[160,90], d:[60,60], e:[70,70], f:[60,60], g:[60,50], h:[40,70], i:[90,90],
                      j:[70,170], k:[150,60], l:[140,70], m:[60,60], n:[120,30], o:[90,270], p:[40,40], q:[100,50], r:[250,14],
                      s:[90,90], t:[90,90], u:[60,60], v:[60,60], w:[60,60], x:[60,60], y:[80,25], z:[45,45],
-                     A:[300,300], B:[180,70], C:[50,50], D:[100,50] };
+                     A:[300,300], B:[180,70], C:[50,50], D:[100,50],
+                     E:[90,35], F:[60,60], G:[70,25], H:[60,50], I:[90,5] };
   const BLOCK_TYPES = new Set(['a', 'c', 'k', 'l', 'i', 'j', 'o']);   // al convertir planos antiguos, un bloque rectangular de estos se une en una sola pieza
   let pzCounter = 0;
   const clampN = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -1475,7 +1481,10 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   function pieceAt(px, py){
     for (let k = st.pz.length - 1; k >= 0; k--){
       const r = pzRect(st.pz[k]);
-      if (px >= r.x0 && px <= r.x1 && py >= r.y0 && py <= r.y1) return st.pz[k];
+      let { x0, x1, y0, y1 } = r;
+      if (x1 - x0 < 20){ const c = (x0 + x1) / 2; x0 = c - 10; x1 = c + 10; }   // las piezas muy finas (vidrio) se pueden tocar igual
+      if (y1 - y0 < 20){ const c = (y0 + y1) / 2; y0 = c - 10; y1 = c + 10; }
+      if (px >= x0 && px <= x1 && py >= y0 && py <= y1) return st.pz[k];
     }
     return null;
   }
@@ -2479,6 +2488,16 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     const m = new THREE.Matrix4().compose(new THREE.Vector3(cx, cy, cz), IDQ(), new THREE.Vector3(rx, ry, rz));
     push(unitGeo('sph'), mat, F.clone().multiply(m));
   }
+  // Caja girada alrededor del eje z (para tubos inclinados dentro de un plano vertical)
+  function pbrot(cx, cy, cz, sx, sy, sz, ang, mat){
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, ang));
+    push(unitGeo('box'), mat, F.clone().multiply(new THREE.Matrix4().compose(new THREE.Vector3(cx, cy, cz), q, new THREE.Vector3(sx, sy, sz))));
+  }
+  // Tubo entre dos puntos (x, y) del plano vertical, a la profundidad cz
+  function ptube(x0, y0, x1, y1, th, cz, mat){
+    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+    pbrot((x0 + x1) / 2, (y0 + y1) / 2, cz, th, len, th, Math.atan2(-dx, dy), mat);
+  }
   // Cuadrilátero horizontal con coordenadas de textura en metros (pisos, césped)
   function quad(x0, z0, x1, z1, y, tile, mat){
     const g = new THREE.BufferGeometry();
@@ -2712,6 +2731,55 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       for (let k = 0; k < nbars; k++){ const x = -a + 0.08 + (k + 0.5) * (2 * a - 0.16) / nbars; pbox(x - 0.008, 0.93, -D / 2 + 0.08, x + 0.008, 0.945, D / 2 - 0.02, t.steel); }   // parrilla
       pbox(-a, 1.5, -D / 2, a, 1.85, -D / 2 + hd, stone);                                              // campana
       pbox(-0.18, 1.85, -D / 2, 0.18, 2.8, -D / 2 + Math.min(0.36, hd), stone);                         // chimenea
+    },
+    wallcab(W, zb, Dc, y0, y1){   // cuerpo de alacena: puertas, juntas y tiradores (la parte trasera apoya en la pared)
+      const t = MT, n = Math.max(1, Math.round(W / .45)), zf = zb + Dc;
+      pbox(-W / 2, y0, zb, W / 2, y1, zf - .02, t.cab);
+      pbox(-W / 2, y0, zf - .02, W / 2, y1, zf, t.cab);
+      // Contorno oscuro: separa visualmente la alacena de una pared del mismo color
+      pbox(-W / 2, y0, zf - .001, W / 2, y0 + .012, zf + .004, t.black); pbox(-W / 2, y1 - .012, zf - .001, W / 2, y1, zf + .004, t.black);
+      pbox(-W / 2, y0, zf - .001, -W / 2 + .008, y1, zf + .004, t.black); pbox(W / 2 - .008, y0, zf - .001, W / 2, y1, zf + .004, t.black);
+      for (let k = 1; k < n; k++){ const x = -W / 2 + k * W / n; pbox(x - .004, y0 + .02, zf - .001, x + .004, y1 - .02, zf + .003, t.black); }
+      for (let k = 0; k < n; k++){ const x = -W / 2 + (k + .5) * W / n + (k % 2 ? -1 : 1) * (W / n / 2 - .06); pbox(x - .01, y0 + .04, zf, x + .01, y0 + .24, zf + .025, t.steel); }
+    },
+    E(W, D){ MODEL.wallcab(W, -D / 2, D, 1.5, 2.2); },
+    F(W, D){ MODEL.counter(W, D); MODEL.wallcab(W, -D / 2, Math.min(.35, D), 1.5, 2.2); },   // mesada con alacena en una sola pieza
+    H(W, D){   // extractor sobre el anafe: borde inferior a la misma altura que las alacenas (1,50 m)
+      const t = MT, zb = -D / 2, y0 = 1.5, cw = Math.min(.3, W * .5), cd = Math.min(.26, D * .6);
+      pbox(-W / 2, y0, zb, W / 2, y0 + .1, D / 2, t.steel);
+      pbox(-W / 2 + .03, y0 - .004, zb + .03, W / 2 - .03, y0, D / 2 - .03, t.black);
+      pbox(-W / 2 + .07, y0 + .1, zb, W / 2 - .07, y0 + .22, zb + D * .7, t.steel);
+      pbox(-cw / 2, y0 + .22, zb, cw / 2, H3.wall, zb + cd, t.steel);
+      pbox(-W / 2 + .08, y0 + .04, D / 2, -W / 2 + .13, y0 + .06, D / 2 + .004, t.black);
+      pbox(W / 2 - .13, y0 + .04, D / 2, W / 2 - .08, y0 + .06, D / 2 + .004, t.black);
+    },
+    G(W, D){   // bicicleta colgada en vertical contra la pared (rueda delantera arriba, manubrio girado)
+      const t = MT, fr = matC('#c0392b', { roughness:.4, metalness:.3 }), r = Math.min(.33, W / 2 - .02), zc = -D / 2 + .05;
+      const wheel = y => {
+        pcyl(0, y, zc, r, r, y + .04, t.black, true);
+        pcyl(0, y, zc, r - .035, r - .035, y + .043, t.steel, true);
+        pcyl(0, y, zc, r - .06, r - .06, y + .046, t.black, true);
+        for (const a of [0, Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4]) pbrot(0, y, zc, .008, 2 * (r - .06), .05, a, t.steel);
+        pcyl(0, y, zc, .03, .03, y + .06, t.steel, true);
+      };
+      const yr = .45, yf = 1.5;
+      wheel(yr); wheel(yf);
+      const R = [0, yr], BB = [.07, .82], S = [-.04, 1.0], Hh = [0, 1.28], Fk = [0, yf];
+      for (const [a, b] of [[R, BB], [R, S], [BB, S], [S, Hh], [BB, Hh], [Hh, Fk]]) ptube(a[0], a[1], b[0], b[1], .03, zc, fr);
+      pbox(-.012, Hh[1], zc - .012, .012, Hh[1] + .08, zc + .07, t.black);          // potencia
+      pbox(-.22, Hh[1] + .07, zc + .06, .22, Hh[1] + .095, zc + .085, t.black);      // manubrio
+      pbox(-.2, S[1] - .08, zc - .03, -.1, S[1] + .1, zc + .03, t.black);             // asiento
+      pbox(-.12, S[1] - .01, zc - .008, S[0], S[1] + .01, zc + .008, t.steel);        // caña del asiento
+      pbox(BB[0] - .03, BB[1] - .02, zc + .02, BB[0] + .05, BB[1] + .02, zc + .16, t.black);   // pedal
+      pbox(-.025, yf + r - .03, -D / 2, .025, yf + r + .07, -D / 2 + .035, t.steel);           // gancho de pared
+    },
+    I(W, D){   // mampara de vidrio con perfil metálico, como la de una ducha
+      const t = MT, h = 2.0, gt = .01;
+      pbox(-W / 2, .03, -gt / 2, W / 2, h - .03, gt / 2, t.glass);
+      pbox(-W / 2, 0, -D / 2, W / 2, .03, D / 2, t.frame);
+      pbox(-W / 2, h - .03, -D / 2, W / 2, h, D / 2, t.frame);
+      pbox(-W / 2, .03, -D / 2, -W / 2 + .02, h - .03, D / 2, t.frame);
+      pbox(W / 2 - .02, .03, -D / 2, W / 2, h - .03, D / 2, t.frame);
     },
     C(W, D){ pbox(-W / 2, 0, -D / 2, W / 2, 0.04, D / 2, MT.baldosa); },       // baldosa suelta
     D(W, D){ // maceta o cantero con plantas
@@ -3581,7 +3649,9 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     q:['Mr','mesa ratona'], r:['Pa','pantalla de proyector'], s:['Si','sillón (módulo)'], t:['SE','sillón (esquina)'],
     u:['Md','mesada'], v:['ME','mesada (esquina)'], w:['An','mesada con anafe'], x:['MB','mesada con bacha'],
     y:['Et','estufa de pared'], z:['Sl','silla'],
-    A:['Pe','pérgola (4 patas y techo de madera calado)'], B:['Pr','parrilla argentina'], C:['Bz','baldosa suelta'], D:['Mc','maceta o cantero con plantas']
+    A:['Pe','pérgola (4 patas y techo de madera calado)'], B:['Pr','parrilla argentina'], C:['Bz','baldosa suelta'], D:['Mc','maceta o cantero con plantas'],
+    E:['Al','alacena (mueble alto, 1,50 a 2,20 m)'], F:['MA','mesada con alacena'], G:['Bi','bicicleta colgada en vertical'],
+    H:['Ex','extractor de humo (sobre el anafe)'], I:['Vd','mampara de vidrio (2 m de alto)']
   };
   function floorToText(p, title){
     const R = st.rows, C = st.cols, m = st.meters;
