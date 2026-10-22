@@ -182,6 +182,11 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
 .v3dbar .spacer{flex:1}
 .v3dmat{position:absolute;top:calc(70px + env(safe-area-inset-top,0px));right:12px;width:min(300px,calc(100vw - 24px));max-height:calc(100vh - 150px);overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px}
 .v3dmat[hidden]{display:none}
+.v3dsun{right:auto;left:12px}
+.v3dmat input[type=number]{width:100%;font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--border);border-radius:6px;padding:6px}
+.v3dmat input[type=range]{width:100%}
+.v3dmat .msmall{font-size:.8rem;color:var(--muted);margin:0;line-height:1.4}
+.v3dmat .mrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .v3dmat select,.v3dmat input[type=color]{width:100%;font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--border);border-radius:6px;padding:6px}
 .v3dmat input[type=color]{height:34px;padding:2px}
 .v3dmat .mlbl{font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:-4px}
@@ -385,12 +390,25 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     <label class="check"><input type="checkbox" id="v3dDoors" checked>Puertas abiertas</label>
     <label class="check" id="v3dP2wrap"><input type="checkbox" id="v3dP2" checked>Piso 2</label>
     <span class="spacer"></span>
+    <button type="button" id="v3dSunBtn" aria-expanded="false" title="Mover el sol según la hora y la época del año">Sol</button>
     <button type="button" id="v3dMatBtn" aria-expanded="false">Materiales</button>
     <button type="button" id="v3dVR">Entrar en VR</button>
     <button type="button" id="v3dReset">Vista inicial</button>
     <button type="button" id="v3dClose" class="primary">Cerrar</button>
   </div>
   <div class="v3dmat" id="v3dMat" hidden></div>
+  <div class="v3dmat v3dsun" id="v3dSun" hidden>
+    <div class="mlbl">Hora solar: <strong id="sunHourOut">15:00</strong></div>
+    <input type="range" id="sunHour" min="0" max="24" step="0.1" value="15" aria-label="Hora solar">
+    <div class="mrow"><button type="button" id="sunPlay">▶ Recorrer el día</button></div>
+    <div class="mlbl">Época del año (día 21 de cada mes)</div>
+    <select id="sunMonth" aria-label="Época del año"></select>
+    <div class="mlbl">Latitud en grados (negativa = hemisferio sur)</div>
+    <input type="number" id="sunLat" min="-66" max="66" step="0.5" value="-35" aria-label="Latitud">
+    <div class="mlbl">Giro del norte (0° = el norte está hacia arriba en el plano)</div>
+    <input type="number" id="sunNorth" min="-180" max="180" step="5" value="0" aria-label="Giro del norte">
+    <p class="msmall" id="sunInfo"></p>
+  </div>
   <p class="v3dhelp">Arrastra para girar · Rueda o pellizco para acercar · Clic derecho o Shift + arrastrar para desplazar · Esc para cerrar</p>
   <p class="v3dmsg" id="v3dMsg" role="status"></p>
 </div>
@@ -3219,6 +3237,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       if (show2) buildLabels(st.pisos[1], H3.floor);
       v3.scene.add(v3.labels);
     }
+    applySun();
     v3.dirty = true;
   }
 
@@ -3355,16 +3374,19 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     v3.scene = new THREE.Scene();
     v3.scene.background = new THREE.Color('#11161c').convertSRGBToLinear();
     v3.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
-    v3.scene.add(new THREE.HemisphereLight('#dfe9f3', '#3a3226', 0.75));
-    // Sol desde el norte (hemisferio sur)
+    v3.hemi = new THREE.HemisphereLight('#dfe9f3', '#3a3226', 0.75);
+    v3.scene.add(v3.hemi);
+    // Sol: su posición se calcula con la hora, la época del año y la latitud (ver applySun)
     const sun = new THREE.DirectionalLight('#fff2dd', 0.85);
     sun.position.set(8, 20, -14);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
-    Object.assign(sun.shadow.camera, { left:-18, right:18, top:18, bottom:-18, near:1, far:80 });
+    Object.assign(sun.shadow.camera, { left:-18, right:18, top:18, bottom:-18, near:1, far:120 });
     sun.shadow.bias = -0.0005;
+    sun.shadow.normalBias = 0.02;
     v3.sun = sun;
     v3.scene.add(sun); v3.scene.add(sun.target);
+    applySun();
 
     // Controles: arrastrar gira, Shift/derecho desplaza, rueda o pellizco acerca
     canvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -3432,6 +3454,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     loop3D();
   }
   function close3D(){
+    if (v3.sunTimer) sunPlay(false);
     if (vr.session) vr.session.end();
     v3.open = false;
     cancelAnimationFrame(v3.raf);
@@ -3469,6 +3492,81 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     v3.sun.castShadow = on;
     v3.renderer.shadowMap.enabled = on;
     Object.values(v3.mats).forEach(mt => { mt.needsUpdate = true; });
+  }
+
+  // ---- Sol: posición según la hora solar, la época del año y la latitud ----
+  // Día del año del 21 de cada mes (año no bisiesto). Los nombres no dependen del hemisferio.
+  const SUN_MONTHS = [['enero', 21], ['febrero', 52], ['marzo · equinoccio', 80], ['abril', 111], ['mayo', 141], ['junio · solsticio', 172],
+                      ['julio', 202], ['agosto', 233], ['septiembre · equinoccio', 264], ['octubre', 294], ['noviembre', 325], ['diciembre · solsticio', 355]];
+  const SUN_DIRS = ['norte', 'noreste', 'este', 'sudeste', 'sur', 'sudoeste', 'oeste', 'noroeste'];
+  const RAD = Math.PI / 180;
+  function sunPref(){
+    const p = uiPref('sol', null) || {}, num = (v, d, lo, hi) => Number.isFinite(+v) && v !== null && v !== '' ? clampN(+v, lo, hi) : d;
+    return { hour:num(p.hour, 15, 0, 24), month:Math.round(num(p.month, new Date().getMonth(), 0, 11)), lat:num(p.lat, -35, -66, 66), north:num(p.north, 0, -180, 180) };
+  }
+  // Altura (alt) y orientación (az, medida desde el norte hacia el este) del sol, en radianes
+  function sunPosition(hour, doy, latDeg){
+    const dec = 23.44 * RAD * Math.sin(2 * Math.PI * (284 + doy) / 365), lat = latDeg * RAD, H = (hour - 12) * 15 * RAD;
+    const sa = clampN(Math.sin(lat) * Math.sin(dec) + Math.cos(lat) * Math.cos(dec) * Math.cos(H), -1, 1), alt = Math.asin(sa), ca = Math.cos(alt);
+    let az = ca > 1e-6 ? Math.acos(clampN((Math.sin(dec) - sa * Math.sin(lat)) / (ca * Math.cos(lat)), -1, 1)) : 0;
+    if (H > 0) az = 2 * Math.PI - az;
+    return { alt, az };
+  }
+  // Salida y puesta del sol (hora solar); null si el sol no sale o no se pone ese día
+  function sunRiseSet(doy, latDeg){
+    const dec = 23.44 * RAD * Math.sin(2 * Math.PI * (284 + doy) / 365), c = -Math.tan(latDeg * RAD) * Math.tan(dec);
+    if (c <= -1 || c >= 1) return null;
+    const h0 = Math.acos(c) / RAD / 15;
+    return [12 - h0, 12 + h0];
+  }
+  const fmtHour = h => { let m = Math.round(h * 60); m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+  function applySun(){
+    if (!v3.sun || !window.THREE) return;
+    const s = sunPref(), doy = SUN_MONTHS[s.month][1], pos = sunPosition(s.hour, doy, s.lat);
+    const beta = pos.az - s.north * RAD, ca = Math.cos(pos.alt);
+    const W = st.cols * st.meters, D = st.rows * st.meters, tx = W / 2, tz = D / 2, hs = Math.hypot(W, D) / 2 + 5;
+    const k = clampN(pos.alt / (12 * RAD), 0, 1), f = k * k * (3 - 2 * k);   // transición suave al amanecer y al atardecer
+    v3.sun.target.position.set(tx, 0, tz);
+    v3.sun.position.set(tx + 45 * ca * Math.sin(beta), 45 * Math.sin(Math.max(pos.alt, 0.02)), tz - 45 * ca * Math.cos(beta));
+    Object.assign(v3.sun.shadow.camera, { left:-hs, right:hs, top:hs, bottom:-hs, near:1, far:120 });
+    v3.sun.shadow.camera.updateProjectionMatrix();
+    v3.sun.intensity = 0.85 * f;
+    v3.sun.color.set(f < 0.6 ? '#ffc890' : '#fff2dd');   // luz más cálida con el sol bajo
+    if (v3.hemi) v3.hemi.intensity = 0.22 + 0.53 * f;
+    v3.dirty = true;
+    // Panel (queda debajo de la barra aunque esta ocupe dos filas)
+    placeSunPanel();
+    $('sunHourOut').textContent = fmtHour(s.hour);
+    const rs = sunRiseSet(doy, s.lat), dir = SUN_DIRS[Math.round(pos.az / (Math.PI / 4)) % 8];
+    $('sunInfo').textContent = (pos.alt > 0
+        ? `Sol a ${Math.round(pos.alt / RAD)}° de altura, hacia el ${dir}.`
+        : 'El sol está bajo el horizonte.') +
+      (rs ? ` Sale a las ${fmtHour(rs[0])} y se pone a las ${fmtHour(rs[1])} (hora solar).` : '') +
+      ' Es hora solar (a las 12:00 el sol está más alto). En la provincia de Buenos Aires eso ocurre cerca de las 12:50 del reloj.';
+  }
+  function placeSunPanel(){
+    const bar = document.querySelector('.v3dbar');
+    if (bar && bar.offsetHeight) $('v3dSun').style.top = (bar.offsetTop + bar.offsetHeight + 8) + 'px';
+  }
+  function sunSave(){
+    const rd = (id, d) => { const v = parseFloat($(id).value); return Number.isFinite(v) ? v : d; };
+    const cur = sunPref();
+    setUiPref('sol', { hour:rd('sunHour', cur.hour), month:rd('sunMonth', cur.month), lat:clampN(rd('sunLat', cur.lat), -66, 66), north:clampN(rd('sunNorth', cur.north), -180, 180) });
+  }
+  function sunSync(){
+    const s = sunPref();
+    $('sunHour').value = s.hour; $('sunMonth').value = s.month; $('sunLat').value = s.lat; $('sunNorth').value = s.north;
+  }
+  function sunPlay(on){
+    clearInterval(v3.sunTimer); v3.sunTimer = null;
+    $('sunPlay').textContent = on ? '⏸ Detener' : '▶ Recorrer el día';
+    if (!on) return;
+    v3.sunTimer = setInterval(() => {
+      const s = sunPref(), rs = sunRiseSet(SUN_MONTHS[s.month][1], s.lat) || [6, 18];
+      let h = s.hour + 0.1;
+      if (h > rs[1] || h < rs[0]) h = rs[0];
+      $('sunHour').value = h; sunSave(); applySun();
+    }, 90);
   }
 
   // ---- Regla entre las manos: línea punteada y distancia entre los dos controles ----
@@ -3656,6 +3754,16 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   $('v3dDims').checked = uiPref('medidas3d', true);
   $('v3dDims').addEventListener('change', e => { setUiPref('medidas3d', e.target.checked); if (v3.renderer) build3D(); });
   $('v3dRoof').addEventListener('change', e => setMat3d('techo', e.target.checked));
+  $('sunMonth').innerHTML = SUN_MONTHS.map((m, i) => `<option value="${i}">21 de ${m[0]}</option>`).join('');
+  $('v3dSunBtn').addEventListener('click', () => {
+    const panel = $('v3dSun'), open = panel.hidden;
+    if (open){ sunSync(); applySun(); }
+    panel.hidden = !open;
+    $('v3dSunBtn').setAttribute('aria-expanded', String(open));
+  });
+  $('v3dSun').addEventListener('input', () => { sunSave(); applySun(); });
+  window.addEventListener('resize', () => { if (v3.open) placeSunPanel(); });
+  $('sunPlay').addEventListener('click', () => sunPlay(!v3.sunTimer));
   $('v3dMatBtn').addEventListener('click', () => {
     const panel = $('v3dMat'), open = panel.hidden;
     if (open) renderMatPanel();
