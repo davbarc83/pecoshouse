@@ -45,6 +45,7 @@ details.sec[data-sec="paredes"]{display:none}
 .sethead button{padding:2px 10px;font-size:1.2rem;line-height:1.2}
 .setpanel .actions{display:flex;gap:8px;flex-wrap:wrap}
 .furnbar{position:fixed;top:120px;right:18px;z-index:19;width:178px;max-height:calc(100vh - 140px);overflow-y:auto;display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.pzpaint{display:flex;gap:8px;align-items:end}.pzpaint label{display:flex;flex-direction:column;gap:3px;font-size:.78rem;color:var(--muted);flex:1}.pzpaint input[type=color]{width:100%;height:30px;padding:0;border:1px solid var(--border);border-radius:6px;background:var(--sheet);cursor:pointer}
 .furnttl{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:none;padding:2px;font-weight:600;font-size:.85rem}
 .chev{width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin:-3px 4px 0 0;transition:transform .15s}
 .furn-off .furnbar{width:auto;gap:0}
@@ -469,6 +470,11 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     <button type="button" data-act="ch" title="Centrar horizontalmente en el ambiente">Centrar ↔</button>
     <button type="button" data-act="cv" title="Centrar verticalmente en el ambiente">Centrar ↕</button>
   </div>
+  <div class="pzrow pzpaint">
+    <label>Pintar arriba<input type="color" id="pzTop" value="#cccccc"></label>
+    <label>Pintar cuerpo<input type="color" id="pzBody" value="#cccccc"></label>
+    <button type="button" data-act="unpaint" title="Quitar la pintura y volver a los materiales del mueble">Quitar</button>
+  </div>
   <div class="pzrow pzbtns">
     <button type="button" data-act="dup">Duplicar</button>
     <button type="button" data-act="del" class="danger" title="Eliminar (Supr)">Eliminar</button>
@@ -548,7 +554,11 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     if (!z || typeof z !== 'object' || !FMAP[z.k]) return null;
     const x = Math.round(Number(z.x)), y = Math.round(Number(z.y)), w = Math.round(Number(z.w)), d = Math.round(Number(z.d)), o = Math.round(Number(z.o || 0));
     if (![x, y, w, d, o].every(Number.isFinite)) return null;
-    return { k:z.k, x:clampN(x, -5000, 20000), y:clampN(y, -5000, 20000), w:clampN(w, 5, 3000), d:clampN(d, 5, 3000), o:((o % 4) + 4) % 4 };
+    const out = { k:z.k, x:clampN(x, -5000, 20000), y:clampN(y, -5000, 20000), w:clampN(w, 5, 3000), d:clampN(d, 5, 3000), o:((o % 4) + 4) % 4 };
+    const hx = v => (typeof v === 'string' && /^#?[0-9a-f]{6}$/i.test(v)) ? '#' + v.replace('#', '').toLowerCase() : null;
+    if (hx(z.pb)) out.pb = hx(z.pb);   // color del cuerpo (pintura de la pieza)
+    if (hx(z.pt)) out.pt = hx(z.pt);   // color de la parte de arriba
+    return out;
   }
   // Planos anteriores: muebles por cuadro -> piezas (los bloques rectangulares de cama, mesa, placard, etc. se unen en una sola)
   function cellsToPieces(f, R, C, cs){
@@ -1710,9 +1720,23 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     const setv = (id, v) => { const el = $(id); if (document.activeElement !== el) el.value = v; el.disabled = !one || lock; };
     setv('pzW', one ? list[0].w : ''); setv('pzD', one ? list[0].d : '');
     $('pzStep').value = String(stepCm());
+    const f0 = list[0];
+    if (document.activeElement !== $('pzTop')) $('pzTop').value = f0.pt || '#cccccc';
+    if (document.activeElement !== $('pzBody')) $('pzBody').value = f0.pb || '#cccccc';
+    $('pzTop').disabled = $('pzBody').disabled = lock;
     panel.querySelectorAll('button[data-act], button[data-n]').forEach(b => { b.disabled = lock; });
   }
+  function paintSel(prop, val){
+    if (!furnOK()) return;
+    const list = selPieces();
+    if (!list.length) return;
+    snapshot();
+    for (const z of list){ if (val) z[prop] = val; else delete z[prop]; }
+    render(); save();
+  }
   function bindPzPanel(){
+    $('pzTop').addEventListener('change', e => paintSel('pt', e.target.value));
+    $('pzBody').addEventListener('change', e => paintSel('pb', e.target.value));
     $('pzW').addEventListener('change', applySize);
     $('pzD').addEventListener('change', applySize);
     ['pzW', 'pzD'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); }));
@@ -1727,6 +1751,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       else if (b.dataset.act === 'cv') centerSel('v');
       else if (b.dataset.act === 'dup') duplicateSel();
       else if (b.dataset.act === 'del') deleteSel();
+      else if (b.dataset.act === 'unpaint'){ paintSel('pt', null); paintSel('pb', null); }
       else if (b.dataset.act === 'close'){ mvSel = null; render(); }
     });
   }
@@ -2120,7 +2145,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     const flat = a => a.map(r => r.map(v => EDGE_CHARS[v] || '0').join('')).join('');
     const parts = p => {
       const src = Array.isArray(p.pz) ? p.pz : cellsToPieces(p.f, d.rows, d.cols, Math.round((d.meters || 1) * 100));
-      const fu = src.map(cleanPiece).filter(Boolean).map(z => `${z.k}.${z.x}.${z.y}.${z.w}.${z.d}.${z.o}`);
+      const fu = src.map(cleanPiece).filter(Boolean).map(z => `${z.k}.${z.x}.${z.y}.${z.w}.${z.d}.${z.o}` + ((z.pb || z.pt) ? `.${z.pb ? z.pb.slice(1) : '-'}.${z.pt ? z.pt.slice(1) : '-'}` : ''));
       const nm = Object.entries(p.names || {}).map(([k, n]) => k.replace('_', '.') + '.' + encodeURIComponent(n));
       return [flat(p.h), flat(p.v), fu.join(','), nm.join(',')];
     };
@@ -2173,7 +2198,9 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       if (list.length > 3000) throw new Error(`El código tiene demasiados muebles${label}.`);
       for (const ent of list){
         const q = ent.split('.');
-        const z = (q.length === 6 && q.slice(1).every(v => /^-?\d+$/.test(v))) ? cleanPiece({ k:q[0], x:q[1], y:q[2], w:q[3], d:q[4], o:q[5] }) : null;
+        const hexOK = v => v === '-' || /^[0-9a-fA-F]{6}$/.test(v);
+        const z = ((q.length === 6 || (q.length === 8 && hexOK(q[6]) && hexOK(q[7]))) && q.slice(1, 6).every(v => /^-?\d+$/.test(v)))
+          ? cleanPiece({ k:q[0], x:q[1], y:q[2], w:q[3], d:q[4], o:q[5], pb:q[6] && q[6] !== '-' ? q[6] : null, pt:q[7] && q[7] !== '-' ? q[7] : null }) : null;
         if (!z) throw new Error(`La lista de muebles del código no es válida${label}.`);
         pz.push(z);
       }
@@ -2654,7 +2681,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       boiserie:finishMat(S.boiserie, 'surface', { roughness:.55 }),
       // Sombra del relieve de los marcos: el mismo tono, apenas más oscuro
       boiserieShade: S.boiserie.t === 'color' ? matC(toHex(tint(S.boiserie.c, .8)), { roughness:.6 }) : finishMat(S.boiserie, 'surface', { roughness:.55, color:lin('#bdbdbd') }),
-      wood:finishMat(S.madera, 'object'), door,
+      wood:finishMat(S.madera, 'object'), tabletop:finishMat(S.madera, 'object'), door,
       baldosa:finishMat(S.baldosas, 'surface', { roughness:.9 }), pergola:finishMat(S.pergola, 'object'),
       fabric:finishMat(fab, 'object', { roughness:.95 }), fabric2,
       linen:matC('#efebe3', { roughness:.95 }), white:matC('#f4f4f1', { roughness:.3 }),
@@ -2685,7 +2712,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     b(W, D){ const t = MT; MODEL.s(W, D); pbox(-W / 2, .24, -D / 2, -W / 2 + .1, .6, D / 2, t.fabric); pbox(W / 2 - .1, .24, -D / 2, W / 2, .6, D / 2, t.fabric); },
     c(W, D){ // mesa
       const t = MT;
-      pbox(-W / 2 + .01, .73, -D / 2 + .01, W / 2 - .01, .77, D / 2 - .01, t.wood);
+      pbox(-W / 2 + .01, .73, -D / 2 + .01, W / 2 - .01, .77, D / 2 - .01, t.tabletop);
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) pbox(sx * (W / 2 - .08) - .03, 0, sz * (D / 2 - .08) - .03, sx * (W / 2 - .08) + .03, .73, sz * (D / 2 - .08) + .03, t.wood);
     },
     z(W, D){ // silla, mirando hacia -z (hacia la mesa)
@@ -2764,7 +2791,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     },
     l(W, D){ // escritorio
       const t = MT, d = Math.min(D, .65);
-      pbox(-W / 2, .73, -D / 2, W / 2, .76, -D / 2 + d, t.wood);
+      pbox(-W / 2, .73, -D / 2, W / 2, .76, -D / 2 + d, t.tabletop);
       for (const sx of [-1, 1]) for (const z of [-D / 2 + .05, -D / 2 + d - .05]) pbox(sx * (W / 2 - .05) - .025, 0, z - .025, sx * (W / 2 - .05) + .025, .73, z + .025, t.black);
       pbox(-.25, .9, -D / 2 + .08, .25, 1.2, -D / 2 + .1, t.black);
       pbox(-.03, .76, -D / 2 + .08, .03, .9, -D / 2 + .1, t.black);
@@ -2776,7 +2803,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       pbox(-W / 2 + .04, .76, D / 2, W / 2 - .04, .82, D / 2 + .005, matC('#c9cdd1'));
     },
     n(W, D){ const t = MT; pbox(-W / 2, 0, -.2, W / 2, .45, .2, t.wood); pbox(-W / 2 + .02, .55, -.02, W / 2 - .02, 1.15, .02, t.black); pbox(-.08, .45, -.05, .08, .55, .05, t.black); },
-    q(W, D){ const t = MT; pbox(-W * .42, .36, -D * .28, W * .42, .4, D * .28, t.wood); for (const sx of [-1, 1]) for (const sz of [-1, 1]) pbox(sx * W * .36 - .02, 0, sz * D * .22 - .02, sx * W * .36 + .02, .36, sz * D * .22 + .02, t.wood); },
+    q(W, D){ const t = MT; pbox(-W * .42, .36, -D * .28, W * .42, .4, D * .28, t.tabletop); for (const sx of [-1, 1]) for (const sz of [-1, 1]) pbox(sx * W * .36 - .02, 0, sz * D * .22 - .02, sx * W * .36 + .02, .36, sz * D * .22 + .02, t.wood); },
     r(W, D){ const t = MT; pbox(-W / 2, .55, -D / 2 + .03, W / 2, 2.25, -D / 2 + .07, t.black); pbox(-W / 2, .62, -D / 2 + .07, W / 2, 2.18, -D / 2 + .08, t.screen); },
     y(W, D){ const t = MT; pbox(-W * .38, .3, -D / 2, W * .38, 1.0, -D / 2 + .16, t.heater); for (let k = 0; k < 6; k++){ const x = -W * .3 + k * W * .12; pbox(x - .006, .4, -D / 2 + .16, x + .006, .9, -D / 2 + .17, t.black); } },
     o(W, D){ // escalera: sube hacia el fondo (-z)
@@ -2938,7 +2965,16 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
         continue;
       }
       setFrame(cx, base, cz, -o * Math.PI / 2);
-      if (MODEL[z.k]) MODEL[z.k](z.w / 100, z.d / 100);
+      const saved = MT;
+      if (z.pb || z.pt){   // pieza pintada: arriba (mesadas, tapas, almohadones, colcha) y cuerpo (frentes, estructura, tapizado)
+        const pm = hx => matC(hx, { roughness:.55 });
+        const body = z.pb ? pm(z.pb) : null, top = z.pt ? pm(z.pt) : null;
+        const lighter = z.pb ? pm(toHex(tint(z.pb, 1.2))) : null;
+        MT = Object.assign({}, saved);
+        if (body) Object.assign(MT, { cab:body, wood:body, fabric:body, white:body, fabric2:top || lighter, tabletop:top || body });
+        if (top) Object.assign(MT, { top, tabletop:top, fabric2:top, linen:top });
+      }
+      try { if (MODEL[z.k]) MODEL[z.k](z.w / 100, z.d / 100); } finally { MT = saved; }
     }
   }
 
