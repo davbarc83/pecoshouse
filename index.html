@@ -39,6 +39,16 @@ aside{background:var(--panel);border-right:1px solid var(--border);padding:20px 
 .slot.sel{border-color:var(--door);box-shadow:inset 0 0 0 1px var(--door)}
 details.sec{border-bottom:1px solid var(--border)}
 details.sec[data-sec="paredes"]{display:none}
+.setpanel{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));right:18px;z-index:40;width:min(340px,calc(100vw - 24px));max-height:calc(100vh - 28px);overflow-y:auto;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px 16px 16px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.setpanel[hidden]{display:none}
+.sethead{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+.sethead button{padding:2px 10px;font-size:1.2rem;line-height:1.2}
+.setpanel .actions{display:flex;gap:8px;flex-wrap:wrap}
+.furnbar{position:fixed;top:120px;right:18px;z-index:19;width:178px;max-height:calc(100vh - 140px);overflow-y:auto;display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.furnttl{font-weight:600;font-size:.85rem;padding:0 2px}
+.furnbar .palette{grid-template-columns:repeat(2,1fr)}
+.furnbar .rotrow{flex-direction:column;align-items:stretch;gap:4px}
+@media (min-width:761px){main{padding-right:214px}.pzpanel{right:212px}}
 details.sec > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:13px 2px;font-weight:600;font-size:.95rem;user-select:none}
 details.sec > summary::-webkit-details-marker{display:none}
 details.sec > summary::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s ease;margin-top:-4px}
@@ -212,6 +222,9 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   main{padding:12px}
   .pzpanel{right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px))}
   .floorbar{top:auto;bottom:calc(14px + env(safe-area-inset-bottom,0px));right:12px}
+  .furnbar{top:auto;right:12px;left:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));width:auto;max-height:32vh}
+  .furnbar .palette{grid-template-columns:repeat(4,1fr)}
+  .setpanel{right:12px;top:12px}
 }
 #printArea{display:none}
 .txtmodal{position:fixed;inset:0;z-index:70;background:rgba(8,10,14,.7);display:flex;align-items:center;justify-content:center;padding:20px}
@@ -274,14 +287,14 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       </div>
     </details>
 
-    <details class="sec" data-sec="muebles" open>
-      <summary>Muebles</summary>
-      <div class="body">
-        <div class="palette" id="palette"></div>
-        <div class="rotrow"><button id="rotate" title="Tecla R">Girar 90°</button><span id="rotLabel">Orientación: 0°</span></div>
-      </div>
-    </details>
+  </aside>
 
+  <main>
+    <div class="board"><svg id="plan" class="plansvg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+  </main>
+</div>
+<div class="setpanel" id="setpanel" role="dialog" aria-label="Ajustes" hidden>
+  <div class="sethead"><strong>Ajustes</strong><button type="button" id="setClose" aria-label="Cerrar ajustes">&times;</button></div>
     <details class="sec" data-sec="grilla">
       <summary>Grilla, vista y escala</summary>
       <div class="body">
@@ -342,11 +355,11 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       <button id="clear" class="danger">Vaciar este piso</button>
       <button id="lockBtn" hidden title="Olvida la contraseña guardada en este equipo; la página volverá a pedirla">Cerrar acceso</button>
     </div>
-  </aside>
-
-  <main>
-    <div class="board"><svg id="plan" class="plansvg" xmlns="http://www.w3.org/2000/svg"></svg></div>
-  </main>
+</div>
+<div class="furnbar" id="furnbar" role="group" aria-label="Muebles">
+  <div class="furnttl">Muebles</div>
+  <div class="palette" id="palette"></div>
+  <div class="rotrow"><button id="rotate" title="Tecla R">Girar 90°</button><span id="rotLabel">Orientación: 0°</span></div>
 </div>
 <div class="floorbar" id="floorbar" role="group" aria-label="Herramientas y pisos">
   <div class="frow">
@@ -374,6 +387,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     </div>
     <button type="button" class="f3d" id="printBtn" title="Imprimir el plano (Ctrl+P)" aria-label="Imprimir"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M4.5 6.5 V2 H13.5 V6.5 M4.5 13 H2 V6.5 H16 V13 H13.5 M4.5 10.5 H13.5 V16 H4.5 Z"/></svg></button><button type="button" class="f3d" id="pngBtn" title="Exportar el mapa como imagen PNG" aria-label="Exportar mapa PNG"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><rect x="2" y="3" width="14" height="12" rx="1.5"/><circle cx="6.3" cy="7.2" r="1.3"/><path d="M2.5 13 L7 9.5 L10 12 L12.5 10 L15.5 13"/></svg></button>
     <button type="button" class="f3d" id="open3d" title="Ver el plano en 3D" aria-label="Vista 3D">3D</button>
+    <button type="button" class="fhelpbtn" id="setBtn" title="Ajustes: grilla, escala, compartir, Google Docs, deshacer, vaciar" aria-label="Ajustes" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><circle cx="9" cy="9" r="2.6"/><path d="M9 1.5 L10.3 3.2 12.4 2.7 13 4.8 15.2 5.4 14.6 7.6 16.3 9 14.6 10.4 15.2 12.6 13 13.2 12.4 15.3 10.3 14.8 9 16.5 7.7 14.8 5.6 15.3 5 13.2 2.8 12.6 3.4 10.4 1.7 9 3.4 7.6 2.8 5.4 5 4.8 5.6 2.7 7.7 3.2Z"/></svg></button>
     <button type="button" class="fhelpbtn" id="helpToggle" title="Mostrar u ocultar la ayuda" aria-label="Ayuda" aria-pressed="true">?</button>
   </div>
   <p class="fhelp" id="toolHelp" role="status"></p>
@@ -498,7 +512,8 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     { k:'H', n:'Extractor', d:'<rect x="4" y="4" width="92" height="92" rx="4"/><rect class="b" x="34" y="4" width="32" height="40"/><path d="M4 96 L34 44 M96 96 L66 44" stroke-opacity=".5"/><circle cx="50" cy="72" r="9" stroke-opacity=".5"/>' },
     { k:'I', n:'Mampara de vidrio', d:'<rect class="b" x="2" y="30" width="96" height="40" rx="4" fill-opacity=".35"/><path d="M8 50 H92" stroke-opacity=".6"/>' },
     { k:'J', n:'Escalera en U', d:'<rect class="b" x="12" y="4" width="76" height="92"/><path d="M50 30 V96 M12 30 H88 M12 44 H50 M12 58 H50 M12 72 H50 M12 86 H50 M50 44 H88 M50 58 H88 M50 72 H88 M50 86 H88"/><path d="M69 90 V16 H31 V82 M25 74 L31 84 L37 74"/>' },
-    { k:'K', n:'Cinta de correr', d:'<rect class="b" x="28" y="6" width="44" height="88" rx="5"/><rect x="35" y="26" width="30" height="62" rx="3" stroke-opacity=".6"/><path d="M34 14 H66"/><path d="M50 74 V38 M44 46 L50 38 L56 46" stroke-opacity=".5"/>' }
+    { k:'K', n:'Cinta de correr', d:'<rect class="b" x="28" y="6" width="44" height="88" rx="5"/><rect x="35" y="26" width="30" height="62" rx="3" stroke-opacity=".6"/><path d="M34 14 H66"/><path d="M50 74 V38 M44 46 L50 38 L56 46" stroke-opacity=".5"/>' },
+    { k:'L', n:'Separador de varillas', d:'<rect class="b" x="2" y="32" width="96" height="36" rx="2"/><path d="M12 32 V68 M22 32 V68 M32 32 V68 M42 32 V68 M52 32 V68 M62 32 V68 M72 32 V68 M82 32 V68 M92 32 V68" stroke-opacity=".7"/>' }
   ];
   const FMAP = Object.fromEntries(FURN.map(f => [f.k, f]));
 
@@ -510,7 +525,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
                      j:[70,170], k:[150,60], l:[140,70], m:[60,60], n:[120,30], o:[90,270], p:[40,40], q:[100,50], r:[250,14],
                      s:[90,90], t:[90,90], u:[60,60], v:[60,60], w:[60,60], x:[60,60], y:[80,25], z:[45,45],
                      A:[300,300], B:[180,70], C:[50,50], D:[100,50],
-                     E:[90,35], F:[60,60], G:[70,25], H:[60,50], I:[90,5], J:[150,250], K:[90,190] };
+                     E:[90,35], F:[60,60], G:[70,25], H:[60,50], I:[90,5], J:[150,250], K:[90,190], L:[120,30] };
   const BLOCK_TYPES = new Set(['a', 'c', 'k', 'l', 'i', 'j', 'o']);   // al convertir planos antiguos, un bloque rectangular de estos se une en una sola pieza
   let pzCounter = 0;
   const clampN = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -596,7 +611,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
 
   function defaults(n){
     return { rows:12, cols:12, cell:44, meters:1, showDims:true, showRooms:true,
-             h:[], v:[], f:[], names:{}, nombre:n === 0 ? 'Google Docs' : 'Plano ' + n, editado:0,
+             h:[], v:[], f:[], names:{}, nombre:n === 0 ? 'Google Docs' : n === 1 ? 'Mi plano' : 'Plano ' + n, editado:0,
              pisos:null, piso:0, underOp:35 };
   }
   function readSlot(n){
@@ -798,7 +813,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
         localStorage.removeItem(KEY);
       }
       const a = parseInt(localStorage.getItem(ACTIVE_KEY), 10);
-      if (a >= 0 && a <= SLOTS) slot = a;
+      if (a >= 0 && a <= 1) slot = a;
     } catch(_){}
     applyDefaultSlots();
     applyUpdates();
@@ -847,7 +862,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     const box = $('slots');
     if (!box) return;
     box.textContent = '';
-    for (let n = 0; n <= SLOTS; n++){
+    for (let n = 0; n <= 1; n++){   // solo se muestran Google Docs y «Mi plano»; los demás espacios siguen guardados
       const d = n === slot ? st : readSlot(n);
       const row = document.createElement('div');
       row.className = 'slotrow';
@@ -857,7 +872,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       b.setAttribute('aria-pressed', String(n === slot));
       const nm = document.createElement('span');
       nm.className = 'sname';
-      nm.textContent = n === 0 ? 'Espacio 0 · Google Docs' : ((d && d.nombre) || ('Plano ' + n));
+      nm.textContent = n === 0 ? 'Espacio 0 · Google Docs' : ((d && d.nombre) || (n === 1 ? 'Mi plano' : 'Plano ' + n));
       const mt = document.createElement('span');
       mt.className = 'smeta';
       mt.textContent = slotSummary(d);
@@ -1934,6 +1949,13 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     if (!b) return;
     if (b.dataset.tool === 'mv') selectMove(); else selectEdgeTool(+b.dataset.tool);
   });
+  (function(){
+    const pn = $('setpanel'), bt = $('setBtn');
+    const setOpen = on => { pn.hidden = !on; bt.setAttribute('aria-expanded', String(on)); };
+    bt.addEventListener('click', () => setOpen(pn.hidden));
+    $('setClose').addEventListener('click', () => setOpen(false));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !pn.hidden) setOpen(false); });
+  })();
   $('helpToggle').addEventListener('click', () => { setUiPref('help', !uiPref('help', true)); renderHelp(); });
   $('grpBtn').addEventListener('click', () => {
     setUiPref('grupo', !uiPref('grupo', false));
@@ -2359,7 +2381,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     const t = new THREE.CanvasTexture(c);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.encoding = THREE.sRGBEncoding;
-    t.anisotropy = 4;
+    t.anisotropy = 8;
     return (TEX[key] = t);
   }
   function grain(g, x, y, w, h, base, r, horizontal){
@@ -2449,8 +2471,8 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   function grassTex(){
     return canvasTex('grass', 256, (g, S) => {
       const r = rng(42);
-      g.fillStyle = '#3f6b3a'; g.fillRect(0, 0, S, S);
-      for (let k = 0; k < 5000; k++){ g.fillStyle = tint('#4d7d45', 0.7 + r() * 0.6); g.globalAlpha = .6; g.fillRect(r() * S, r() * S, 1.5, 3 + r() * 3); }
+      g.fillStyle = '#52703f'; g.fillRect(0, 0, S, S);
+      for (let k = 0; k < 5000; k++){ g.fillStyle = tint('#5f8048', 0.7 + r() * 0.6); g.globalAlpha = .6; g.fillRect(r() * S, r() * S, 1.5, 3 + r() * 3); }
       g.globalAlpha = 1;
     });
   }
@@ -2481,7 +2503,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
   function M(key, make){ return v3.mats[key] || (v3.mats[key] = make()); }
   function matC(hex, opts){ return M('c' + hex + JSON.stringify(opts || {}), () => new THREE.MeshStandardMaterial(Object.assign({ color:lin(hex), roughness:.8, metalness:0 }, opts || {}))); }
-  function matT(key, tex, opts){ return M('t' + key + JSON.stringify(opts || {}), () => new THREE.MeshStandardMaterial(Object.assign({ map:tex, roughness:.75, metalness:0 }, opts || {}))); }
+  function matT(key, tex, opts){ return M('t' + key + JSON.stringify(opts || {}), () => new THREE.MeshStandardMaterial(Object.assign({ map:tex, bumpMap:tex, bumpScale:1.6, roughness:.75, metalness:0 }, opts || {}))); }
   function mat3(color, opts){ return matC(color, opts); }
 
   // ---- Lote de geometría: piezas por material, fusionadas al final ----
@@ -2578,7 +2600,12 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   function finishMat(spec, purpose, extra){
     if (!spec || spec.t === 'color'){
       const c = spec ? spec.c : '#cccccc';
-      return matC(c, Object.assign({ roughness: purpose === 'surface' ? .9 : .6 }, extra || {}));
+      const mc = matC(c, Object.assign({ roughness: purpose === 'surface' ? .9 : .6 }, extra || {}));
+      if (purpose === 'surface' && !mc.bumpMap){   // revoque fino: relieve sutil en paredes lisas
+        mc.bumpMap = canvasTex('stucco', 256, (g, S) => { g.fillStyle = '#808080'; g.fillRect(0, 0, S, S); speckle(g, S, '#808080', 7000, 2, .35, rng(7)); });
+        mc.bumpScale = .3; mc.userData.worldUV = mc.userData.worldUV || 1.5;
+      }
+      return mc;
     }
     const d = TEXLIB[spec.id] || TEXLIB['madera-clara'];
     const m = matT('f-' + spec.id + '-' + purpose, libTex(spec.id), Object.assign({ roughness:d.rough }, extra || {}));
@@ -2832,6 +2859,16 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
       pbox(-W / 2, h - .03, -D / 2, W / 2, h, D / 2, t.frame);
       pbox(-W / 2, .03, -D / 2, -W / 2 + .02, h - .03, D / 2, t.frame);
       pbox(W / 2 - .02, .03, -D / 2, W / 2, h - .03, D / 2, t.frame);
+    },
+    L(W, D){   // separador de ambientes de varillas verticales de madera, con travesaños arriba y abajo
+      const t = MT, h = 2.2, sw = .035, pitch = .07, rd = Math.min(D, .12);
+      pbox(-W / 2, 0, -rd / 2, W / 2, .08, rd / 2, t.wood);
+      pbox(-W / 2, h - .06, -rd / 2, W / 2, h, rd / 2, t.wood);
+      const n = Math.max(2, Math.floor((W - .06) / pitch));
+      const x0 = -((n - 1) * pitch) / 2;
+      for (let i = 0; i < n; i++){ const cx = x0 + i * pitch; pbox(cx - sw / 2, .08, -.02, cx + sw / 2, h - .06, .02, t.wood); }
+      pbox(-W / 2, .08, -.02, -W / 2 + .035, h - .06, .02, t.wood);
+      pbox(W / 2 - .035, .08, -.02, W / 2, h - .06, .02, t.wood);
     },
     C(W, D){ pbox(-W / 2, 0, -D / 2, W / 2, 0.04, D / 2, MT.baldosa); },       // baldosa suelta
     D(W, D){ // maceta o cantero con plantas
@@ -3370,9 +3407,18 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     v3.renderer.shadowMap.enabled = true;
     v3.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     v3.renderer.outputEncoding = THREE.sRGBEncoding;
+    v3.renderer.toneMapping = THREE.ACESFilmicToneMapping;   // transición suave de luces y sombras, más natural
+    v3.renderer.toneMappingExposure = 1.15;
     v3.renderer.xr.enabled = true;
     v3.scene = new THREE.Scene();
-    v3.scene.background = new THREE.Color('#11161c').convertSRGBToLinear();
+    {   // cielo con degradé (el color de fondo plano daba un aspecto de maqueta)
+      const c = document.createElement('canvas'); c.width = 8; c.height = 256;
+      const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
+      gr.addColorStop(0, '#6f9bd1'); gr.addColorStop(.55, '#b9d3ea'); gr.addColorStop(1, '#eef0ea');
+      g.fillStyle = gr; g.fillRect(0, 0, 8, 256);
+      const tx = new THREE.CanvasTexture(c); tx.encoding = THREE.sRGBEncoding;
+      v3.sky = tx; v3.scene.background = tx;
+    }
     v3.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
     v3.hemi = new THREE.HemisphereLight('#dfe9f3', '#3a3226', 0.75);
     v3.scene.add(v3.hemi);
@@ -3700,7 +3746,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
         v3.scene.add(v3.camera);
         vr.rig.position.set(0, 0, 0); vr.rig.rotation.set(0, 0, 0);
         if (vr.ruler) vr.ruler.group.visible = false;
-        v3.scene.background = new THREE.Color('#11161c').convertSRGBToLinear();
+        v3.scene.background = v3.sky;
         setShadows3D(true);
         $('v3dVR').textContent = 'Entrar en VR';
         resize3D();
@@ -3797,7 +3843,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     g:['Ba','bacha / lavatorio'], h:['In','inodoro'], i:['Du','ducha'], j:['Bt','bañera'], k:['Pl','placard / armario'],
     l:['Es','escritorio'], m:['Lv','lavarropas'], n:['TV','televisor'], o:['Ec','escalera'], p:['Pt','planta'],
     q:['Mr','mesa ratona'], r:['Pa','pantalla de proyector'], s:['Si','sillón (módulo)'], t:['SE','sillón (esquina)'],
-    J:['EU','escalera en U (con descanso)'], K:['Ci','cinta de correr'],
+    J:['EU','escalera en U (con descanso)'], K:['Ci','cinta de correr'], L:['Sv','separador de ambientes de varillas de madera (2,2 m de alto)'],
     u:['Md','mesada'], v:['ME','mesada (esquina)'], w:['An','mesada con anafe'], x:['MB','mesada con bacha'],
     y:['Et','estufa de pared'], z:['Sl','silla'],
     A:['Pe','pérgola (4 patas y techo de madera calado)'], B:['Pr','parrilla argentina'], C:['Bz','baldosa suelta'], D:['Mc','maceta o cantero con plantas'],
