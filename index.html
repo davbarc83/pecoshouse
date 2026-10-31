@@ -45,7 +45,19 @@ details.sec[data-sec="paredes"]{display:none}
 .sethead button{padding:2px 10px;font-size:1.2rem;line-height:1.2}
 .setpanel .actions{display:flex;gap:8px;flex-wrap:wrap}
 .furnbar{position:fixed;top:120px;right:18px;z-index:19;width:178px;max-height:calc(100vh - 140px);overflow-y:auto;display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
-.furnttl{font-weight:600;font-size:.85rem;padding:0 2px}
+.furnttl{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:none;padding:2px;font-weight:600;font-size:.85rem}
+.chev{width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin:-3px 4px 0 0;transition:transform .15s}
+.furn-off .furnbar{width:auto;gap:0}
+.furn-off .furnbar .palette,.furn-off .furnbar .rotrow{display:none}
+.furn-off .furnttl .chev{transform:rotate(-135deg);margin-top:3px}
+#asideToggle{position:fixed;z-index:25;top:14px;left:246px;width:30px;height:30px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%}
+#asideToggle .chev{transform:rotate(135deg);margin:0 -3px 0 0}
+.aside-off #asideToggle{left:10px}
+.aside-off #asideToggle .chev{transform:rotate(-45deg);margin:0 3px 0 0}
+.aside-off .app{grid-template-columns:1fr}
+.aside-off aside{display:none}
+@media (min-width:761px){.furn-off main{padding-right:24px}}
+@media (max-width:760px){#asideToggle{display:none}.aside-off aside{display:flex}.aside-off .app{grid-template-columns:1fr}}
 .furnbar .palette{grid-template-columns:repeat(2,1fr)}
 .furnbar .rotrow{flex-direction:column;align-items:stretch;gap:4px}
 @media (min-width:761px){main{padding-right:214px}.pzpanel{right:212px}}
@@ -256,6 +268,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
 </style>
 </head>
 <body>
+<button type="button" id="asideToggle" aria-expanded="true" title="Mostrar u ocultar el panel izquierdo" aria-label="Mostrar u ocultar el panel izquierdo"><i class="chev" aria-hidden="true"></i></button>
 <div class="app">
   <aside>
     <div class="head">
@@ -357,7 +370,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     </div>
 </div>
 <div class="furnbar" id="furnbar" role="group" aria-label="Muebles">
-  <div class="furnttl">Muebles</div>
+  <button type="button" class="furnttl" id="furnToggle" aria-expanded="true" title="Mostrar u ocultar los muebles"><span>Muebles</span><i class="chev" aria-hidden="true"></i></button>
   <div class="palette" id="palette"></div>
   <div class="rotrow"><button id="rotate" title="Tecla R">Girar 90°</button><span id="rotLabel">Orientación: 0°</span></div>
 </div>
@@ -1950,6 +1963,19 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
     if (b.dataset.tool === 'mv') selectMove(); else selectEdgeTool(+b.dataset.tool);
   });
   (function(){
+    const b = document.body;
+    const apply = () => {
+      b.classList.toggle('furn-off', !!uiPref('furnOff', false));
+      b.classList.toggle('aside-off', !!uiPref('asideOff', false));
+      $('furnToggle').setAttribute('aria-expanded', String(!b.classList.contains('furn-off')));
+      $('asideToggle').setAttribute('aria-expanded', String(!b.classList.contains('aside-off')));
+      try { window.dispatchEvent(new Event('resize')); } catch(_){}
+    };
+    $('furnToggle').addEventListener('click', () => { setUiPref('furnOff', !uiPref('furnOff', false)); apply(); });
+    $('asideToggle').addEventListener('click', () => { setUiPref('asideOff', !uiPref('asideOff', false)); apply(); });
+    apply();
+  })();
+  (function(){
     const pn = $('setpanel'), bt = $('setBtn');
     const setOpen = on => { pn.hidden = !on; bt.setAttribute('aria-expanded', String(on)); };
     bt.addEventListener('click', () => setOpen(pn.hidden));
@@ -2503,7 +2529,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
   function M(key, make){ return v3.mats[key] || (v3.mats[key] = make()); }
   function matC(hex, opts){ return M('c' + hex + JSON.stringify(opts || {}), () => new THREE.MeshStandardMaterial(Object.assign({ color:lin(hex), roughness:.8, metalness:0 }, opts || {}))); }
-  function matT(key, tex, opts){ return M('t' + key + JSON.stringify(opts || {}), () => new THREE.MeshStandardMaterial(Object.assign({ map:tex, bumpMap:tex, bumpScale:1.6, roughness:.75, metalness:0 }, opts || {}))); }
+  function matT(key, tex, opts){ return M('t' + key + JSON.stringify(opts || {}), () => new THREE.MeshStandardMaterial(Object.assign({ map:tex, roughness:.75, metalness:0 }, opts || {}))); }
   function mat3(color, opts){ return matC(color, opts); }
 
   // ---- Lote de geometría: piezas por material, fusionadas al final ----
@@ -2600,12 +2626,7 @@ details.syhelp pre{margin:6px 0;padding:8px;background:var(--sheet);border:1px s
   function finishMat(spec, purpose, extra){
     if (!spec || spec.t === 'color'){
       const c = spec ? spec.c : '#cccccc';
-      const mc = matC(c, Object.assign({ roughness: purpose === 'surface' ? .9 : .6 }, extra || {}));
-      if (purpose === 'surface' && !mc.bumpMap){   // revoque fino: relieve sutil en paredes lisas
-        mc.bumpMap = canvasTex('stucco', 256, (g, S) => { g.fillStyle = '#808080'; g.fillRect(0, 0, S, S); speckle(g, S, '#808080', 7000, 2, .35, rng(7)); });
-        mc.bumpScale = .3; mc.userData.worldUV = mc.userData.worldUV || 1.5;
-      }
-      return mc;
+      return matC(c, Object.assign({ roughness: purpose === 'surface' ? .9 : .6 }, extra || {}));
     }
     const d = TEXLIB[spec.id] || TEXLIB['madera-clara'];
     const m = matT('f-' + spec.id + '-' + purpose, libTex(spec.id), Object.assign({ roughness:d.rough }, extra || {}));
